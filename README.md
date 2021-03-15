@@ -1,11 +1,12 @@
-# api-go
+# WoST API
 
 Golang client API library for building WoST based IoT devices and applications. 
 
-* Definitions for building Thing Description documents
-* MQTT API for connecting to the WoST Hub
-* HTTP API for connecting to the WoST Hub
-* WebSocket API for connecting to the WoST Hub
+* Hub configuration for use by plugins
+* TD - Thing Description builder library
+* MQTT API for connecting to the WoST Hub via MQTT
+* HTTP API for connecting to the WoST Hub via HTTP
+* WebSocket API for connecting to the WoST Hub via WebSocket (tenative tbd)
 
 ## Project Status
 
@@ -49,8 +50,6 @@ For example:
   connection := wosthttp.CreateConnection(hostname, "myiotdevice")
   connection.PublishTD(myTD)
 ```
-
-
 
 # Contributing
 
