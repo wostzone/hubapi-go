@@ -103,16 +103,16 @@ func (client *MqttThingClient) SubscribeToConfig(
 }
 
 // Create a new instance of the Thing Client API
-//  hostname address and port to connect to
-//  certFolder containing server and client certificates for TLS connections
-//  clientID to identify as
-//  credentials with secret to verify the identity
-func NewThingClient(hostname string, certFolder string, clientID string, credentials string) *api.IThingClient {
+//   hostPort address and port to connect to
+//   certFolder containing server and client certificates for TLS connections
+//   clientID to identify as
+//   credentials with secret to verify the identity
+func NewThingClient(hostPort string, certFolder string, clientID string, credentials string) *api.IThingClient {
 	client := &MqttThingClient{
 		certFolder: certFolder,
 		timeoutSec: 3,
 		clientID:   clientID,
-		mqttClient: NewMqttClient(hostname, certFolder),
+		mqttClient: NewMqttClient(hostPort, certFolder),
 	}
 	return client
 }

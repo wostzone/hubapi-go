@@ -270,9 +270,9 @@ func (mqttClient *MqttClient) Unsubscribe(topic string) {
 }
 
 // NewMqttMessenger creates a new MQTT messenger instance
-// clientID must be unique
-// certFolder must contain the server certificate mqtt_srv.crt
-func NewMqttClient(certFolder string, hostPort string) *MqttClient {
+//  hostPort to connect to
+//  certFolder must contain the server certificate mqtt_srv.crt
+func NewMqttClient(hostPort string, certFolder string) *MqttClient {
 
 	messenger := &MqttClient{
 		hostPort:      hostPort,

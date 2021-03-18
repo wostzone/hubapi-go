@@ -36,7 +36,7 @@ func (client *MqttConsumerClient) Stop() {
 }
 
 // PublishAction publish a Thing action request to the Hub
-func (client *MqttConsumerClient) PublishAction(thingID string, action []byte) error {
+func (client *MqttConsumerClient) PublishAction(thingID string, action interface{}) error {
 	topic := strings.ReplaceAll(api.TopicAction, "{id}", thingID)
 	message, err := json.Marshal(action)
 	if err != nil {
@@ -47,7 +47,7 @@ func (client *MqttConsumerClient) PublishAction(thingID string, action []byte) e
 }
 
 // PublishConfig publish a Thing configuration request to the Hub
-func (client *MqttConsumerClient) PublishConfig(thingID string, values []byte) error {
+func (client *MqttConsumerClient) PublishConfig(thingID string, values interface{}) error {
 	topic := strings.ReplaceAll(api.TopicSetConfig, "{id}", thingID)
 	message, err := json.Marshal(values)
 	if err != nil {
@@ -112,7 +112,7 @@ func (client *MqttConsumerClient) SubscribeEvent(
 
 // Create a new instance of the WoST MQTT client
 // This implements the Api interface
-func NewMQTTConsumerClient(certFolder string) api.IConsumerClient {
+func NewConsumerClient(certFolder string) api.IConsumerClient {
 	client := &MqttConsumerClient{
 		certFolder: certFolder,
 		timeoutSec: 3,
