@@ -1,38 +1,77 @@
 package td
 
-// Thing property definition
-// Credits: https://github.com/dravenk/webthing-go/blob/master/property.go
+// Thing property creation
 
-import (
-	"encoding/json"
-)
+// CreateProperty creates a new property instance
+//  title propery title for presentation
+//  description optional extra description of what the property does
+//  writable property is a configuration value and is writable
+func CreateProperty(title string,
+	description string,
+	writable bool) map[string]interface{} {
 
-// Property Initialize the object.
-//
-// @param thing    Thing this property belongs to
-// @param name     Name of the property
-// @param value    Value object to hold the property value
-// @param metadata Property metadata, i.e. type, description, unit, etc., as
-//                 a Map
-type Property struct {
-	// thing      *Thing
-	name       string
-	value      *Value
-	hrefPrefix string
-	href       string
-	metadata   json.RawMessage
+	prop := make(map[string]interface{}, 0)
+	prop["type"] = "null"
+	prop["title"] = title
+	prop["description"] = description
+	prop["writable"] = writable
+	// see https://www.w3.org/TR/2020/WD-wot-thing-description11-20201124/#example-29
+	prop["readOnly"] = !writable
+	prop["writeOnly"] = writable
+
+	return prop
 }
 
-// PropertyObject A property object describes an attribute of a Thing and is indexed by a property id.
-// See https://iot.mozilla.org/wot/#property-object
-type PropertyObject struct {
-	AtType      string      `json:"@type,omitempty"`
-	Title       string      `json:"title,omitempty"`
-	Type        string      `json:"type,omitempty"`
-	Description string      `json:"description,omitempty"`
-	Unit        string      `json:"unit,omitempty"`
-	ReadOnly    bool        `json:"readOnly,omitempty"`
-	Minimum     json.Number `json:"minimum,omitempty"`
-	Maximum     json.Number `json:"maximum,omitempty"`
-	// Links       []Link      `json:"links,omitempty"`
+func SetPropertyEnum(prop map[string]interface{}, enumValues ...interface{}) {
+	prop["enum"] = enumValues
+}
+
+func SetPropertyUnit(prop map[string]interface{}, unit string) {
+	prop["unit"] = unit
+}
+
+func SetPropertyTypeArray(prop map[string]interface{}, minItems uint, maxItems uint) {
+	prop["type"] = "array"
+	if minItems > 0 {
+		prop["minItems"] = minItems
+	}
+	if maxItems > 0 {
+		prop["maxItems"] = maxItems
+	}
+}
+
+func SetPropertyTypeInteger(prop map[string]interface{}, min int, max int) {
+	prop["type"] = "integer"
+	if min > 0 {
+		prop["minimum"] = min
+	}
+	if min < 0 || max != 0 {
+		prop["maximum"] = max
+	}
+}
+
+func SetPropertyTypeNumber(prop map[string]interface{}, min float64, max float64) {
+	prop["type"] = "number"
+	if min > 0 {
+		prop["minimum"] = min
+	}
+	if min < 0 || max != 0 {
+		prop["maximum"] = max
+	}
+}
+
+func SetPropertyTypeObject(prop map[string]interface{}, object interface{}) {
+	prop["type"] = "object"
+	prop["object"] = object
+}
+
+//
+func SetPropertyTypeString(prop map[string]interface{}, minLength int, maxLength int) {
+	prop["type"] = "string"
+	if minLength != 0 {
+		prop["minLength"] = minLength
+	}
+	if maxLength != 0 {
+		prop["maxLength"] = maxLength
+	}
 }

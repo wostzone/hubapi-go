@@ -7,14 +7,11 @@ Interpreting this specification is not always easy so slight differences might e
 
 ## version
 Spec: The spec defines version as type VersionInfo or Array of VersionInfo.
-WoST: Wost accepts a string following semantic versioning, eg [Major.Minor.Patch format](https://semver.org/).
 
-1. Only a single string is accepted because in typed languages a field must be of a single type. You cannot represent a value as a single type or array of that type at the same time.
-2. The [spec definition of VersionInfo](https://www.w3.org/TR/2020/WD-wot-thing-description11-20201124/#versioninfo) is unclear. It is not clear what Vocuabulary term 'instance' means. It is interpreted that this can be a string.
+Issue: The [spec definition of VersionInfo](https://www.w3.org/TR/2020/WD-wot-thing-description11-20201124/#versioninfo) is unclear. It is not clear what Vocuabulary term 'instance' means. It is interpreted that this can be a string.
 
-Recommendations: 
-1. Add a 'versions' field for a map of VersionInfo by type of version (application, hardware, firmware).
-2. Clarify the definition of VersionInfo, for example string or struct.
+Recommendation: 
+- Clarify the definition of VersionInfo, for example string or struct.
 
 ## Created/Modified Dates
 Spec: type is of [datetime](https://www.w3.org/TR/2012/REC-xmlschema11-2-20120405/#dateTime)
@@ -24,38 +21,19 @@ The description of the TD datetime spec is hard to interpret. After reading it a
 
 A datetime format passed to WoST will be retained unchanged.
 
-## Support
-Spec: support is of type any type
-WoST: support is a string containing a URI 
-
-Rational: Strongly type languages expect a single type when parsing JSON. Since the intent seems to be to hold a URI a string is supported; quote: "Provides information about the TD maintainer as URI scheme".
-
-Recommendation: Define the type as string, not as 'any'.
-
-## Properties
-
-## Actions
-
-## Events
-
 ## Links
-Only supported for WoST Things that provide access through the hub. Links that access a Thing directly are not supported.
 
-Rational: The WoST paradigm "Things are not servers" does not allow Things to act as a server. Hence any link to the Thing would be invalid.
+Links are not support in WoST as they conflict with the paradigm that "Things are not servers".
 
-If a WoST Thing includes a link that references the hub API to access information from the Thing, then this can be supported. 
+If a Thing does include a link then it is retained.
 
 
 ## Forms
-Not supported in WoST at this time.
 
 The WoT specification for a [Form](https://www.w3.org/TR/2020/WD-wot-thing-description11-20201124/#form) says: A form can be viewed as a statement of "To perform an operation type operation on form context, make a request method request to submission target" where the optional form fields may further describe the required request. 
 
-Support is considered once this is better understood and if it can be done through the hub.
+In the TD specification, Forms define how to connect to the Thing. In WOST, this connection takes place via the Hub that represents the Thing.
 
-Rational: The WoST paradigm "Things are not servers" does not allow Things to act as a server and thus it cannot be controlled directly through a Form. Instead, the control must go through the hub. 
-
-If a WoST Thing publishes a form that uses the hub API to control the thing then this could be supported in the future.
 
 
 ## Security

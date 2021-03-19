@@ -1,77 +1,75 @@
-// Package td with WoT definitions in golang
-// Credits: https://github.com/draggett/arena-webhub
-// https://www.w3.org/TR/wot-thing-description/
 package td
 
-// ThingDescription defining a thing from the Web of Things
-// Based on [draft 24 Nov 2020](https://www.w3.org/TR/2020/WD-wot-thing-description11-20201124/#introduction)
-// Optional parameters are defined with omitempty
-type ThingDescription struct {
-	Context      []string                 `json:"@context"`         // JSON-LD context: http://www.w3.org/ns/td
-	Type         []string                 `json:"@type,omitempty"`  // JSON-LD context
-	ID           *string                  `json:"id,omitempty"`     // URI with unique identifier for the thing
-	Title        string                   `json:"title"`            // human friendly name for the thing
-	Titles       *map[string]string       `json:"titles,omitempty"` // Multi language titles
-	Description  *string                  `json:"description,omitempty"`
-	Descriptions *map[string]string       `json:"descriptions,omitempty"`
-	Version      *VersionInfo             `json:"version,omitempty"`
-	Created      *string                  `json:"created,omitempty"`    // DateTime
-	Modified     *string                  `json:"modified,omitempty"`   // DateTime
-	Support      *string                  `json:"support,omitempty"`    // URI with support contact
-	Properties   map[string]ThingProperty `json:"properties,omitempty"` // thing property map
-	Actions      map[string]ThingAction   `json:"actions,omitempty"`    // thing action map
-	Events       map[string]ThingEvent    `json:"events,omitempty"`     // thing event map
-	Links        []string                 `json:"links,omitempty"`
-	Forms        []string
-	Security     []SecurityScheme `json:"security"` // ???
+import "github.com/sirupsen/logrus"
+
+type DynamicThingDescription map[string]interface{}
+
+// tbd json-ld parsers:
+// Most popular; https://github.com/xeipuuv/gojsonschema
+// Other:  https://github.com/piprate/json-gold
+
+// AddAction adds or replaces an action in the TD
+//  td is a TD created with 'CreateTD'
+//  name of action to add
+//  action created with 'CreateAction'
+func AddTdAction(td map[string]interface{}, name string, action interface{}) {
+	actions := td["actions"].(map[string]interface{})
+	if action == nil {
+		logrus.Errorf("Add action '%s' to TD. Action is nil", name)
+	} else {
+		actions[name] = action
+	}
 }
 
-// VersionInfo with version information
-type VersionInfo string
-
-// SecurityScheme see: https://www.w3.org/TR/2020/WD-wot-thing-description11-20201124/#securityscheme
-type SecurityScheme struct {
-	Type         string             `json:"@type,omitempty"`        // JSON-LD keyword
-	Description  *string            `json:"description,omitempty"`  // Human readible info in default language
-	Descriptions *map[string]string `json:"descriptions,omitempty"` // Human readible info in different languages
-	Proxy        string             `json:"proxy,omitempty"`        // URI of optional proxy server
-	Scheme       string             `json:"scheme,omitempty"`       // one of nosec, basic, digest, bearer, psk, oauth2 or apikey
+// AddEvent adds or replaces an event in the TD
+//  td is a TD created with 'CreateTD'
+//  name of action to add
+//  event created with 'CreateEvent'
+func AddTdEvent(td map[string]interface{}, name string, event interface{}) {
+	events := td["events"].(map[string]interface{})
+	if event == nil {
+		logrus.Errorf("Add event '%s' to TD. Event is nil.", name)
+	} else {
+		events[name] = event
+	}
 }
 
-// ThingProperty defining a property of a Thing
-type ThingProperty struct {
-	// thingID string   // ID of the thing this property belongs to
-	// Name        string `json:"name"`        // name of the property
-	Description string `json:"description"` // description of the property
-	Type        string `json:"type"`        // property type
-	// Value       string `json:"value"`       // current value of the property
-	Minimum int `json:"minimum"` // optional minimum value
-	Maximum int `json:"maximum"` // optional maximum value
+// AddProperty adds or replaces a property in the TD
+//  td is a TD created with 'CreateTD'
+//  name of property to add
+//  property created with 'CreateProperty'
+func AddTdProperty(td map[string]interface{}, name string, property interface{}) {
+	props := td["properties"].(map[string]interface{})
+	if property == nil {
+		logrus.Errorf("Add property '%s' to TD. Propery is nil.", name)
+	} else {
+		props[name] = property
+	}
 }
 
-// ThingAction defining an action of a Thing
-type ThingAction struct {
-	// Title       string `json:"title"`       // human name of the action
-	Description string `json:"description"` // description of the action
-	Input       struct {
-		Type       string                   `json:"type"` // input type: Object
-		Properties map[string]ThingProperty `json:"properties"`
-	} `json:"input"` // accepted input for the action
-	Output struct {
-		Type       string                   `json:"type"` // input type: Object
-		Properties map[string]ThingProperty `json:"properties"`
-	} `json:"output"` // accepted outputs for the action
-	Safe       bool `json:"safe,omitempty"` // no internal state involved
-	Idempotent bool `json:"idempotennt"`    // Action can be repeated with same result
+// SetTdVersion adds or replace TD version info
+//  td is a TD created with 'CreateTD'
+//  version with map of 'name: version'
+func SetTdVersion(td map[string]interface{}, version map[string]string) {
+	td["version"] = version
 }
 
-// ThingEvent defining an event of a Thing
-type ThingEvent struct {
-	// Name string `json:"name"` // name of the event
-	Description string `json:"description"` // description of the event
-	Data        struct {
-		Type string `json:"type"` // type of data
-	} `json:"data,omitempty"` // data schema of event ???
-	// Subscription string `json:"subscription,omitempty"`  // data to be passed upon subscription ???
-	// Cancellation string `json:"canbcellation,omitempty"` // data to pass to cancel a subscription ???
+// SetTDForm sets the top level forms section of the TD
+// NOTE: In WoST actions are always routed via the Hub using the Hub's protocol binding.
+// Under normal circumstances forms are therefore not needed.
+//  td to add form to
+//  forms with list of forms to add. See also CreateForm to create a single form
+func SetTdForms(td map[string]interface{}, formList []map[string]interface{}) {
+	td["forms"] = formList
+}
+
+// CreateTD creates a new Thing Description document
+func CreateTD(id string) DynamicThingDescription {
+	td := make(DynamicThingDescription, 0)
+	td["@context"] = "http://www.w3.org/ns/td"
+	td["id"] = id
+	td["properties"] = make(map[string]interface{})
+	td["events"] = make(map[string]interface{})
+	td["actions"] = make(map[string]interface{})
+	return td
 }
