@@ -12,14 +12,14 @@ import (
 )
 
 const mqttServerHostPort = "localhost:8883"
-const mqttCertFolder = "/etc/mosquitto/certs"
-const clientID = "client1"
+const caCertFile = "/etc/mosquitto/certs/mqtt_srv.crt"
+const clientID = "client5"
 const TEST_TOPIC = "test"
 
 // These tests require an MQTT TLS server on localhost with TLS support
 
 func TestMqttConnect(t *testing.T) {
-	client := wostmqtt.NewMqttClient(mqttCertFolder, mqttServerHostPort)
+	client := wostmqtt.NewMqttClient(mqttServerHostPort, caCertFile)
 	const timeout = 10
 	err := client.Connect(clientID, timeout)
 	assert.NoError(t, err)
@@ -31,7 +31,7 @@ func TestMqttConnect(t *testing.T) {
 
 func TestMqttNoConnect(t *testing.T) {
 	invalidHost := "nohost:1111"
-	client := wostmqtt.NewMqttClient(mqttCertFolder, invalidHost)
+	client := wostmqtt.NewMqttClient(invalidHost, caCertFile)
 	timeout := 5
 	require.NotNil(t, client)
 	err := client.Connect(clientID, timeout)
@@ -47,7 +47,7 @@ func TestMQTTPubSub(t *testing.T) {
 	const timeout = 10
 	// certFolder := ""
 
-	client := wostmqtt.NewMqttClient(mqttCertFolder, mqttServerHostPort)
+	client := wostmqtt.NewMqttClient(mqttServerHostPort, caCertFile)
 	err := client.Connect(clientID, timeout)
 	require.NoError(t, err)
 
@@ -72,7 +72,7 @@ func TestMQTTPubSub(t *testing.T) {
 }
 
 func TestMQTTMultipleSubscriptions(t *testing.T) {
-	client := wostmqtt.NewMqttClient(mqttCertFolder, mqttServerHostPort)
+	client := wostmqtt.NewMqttClient(mqttServerHostPort, caCertFile)
 	var rx1 string
 	var rx2 string
 	rxMutex := sync.Mutex{}
@@ -145,7 +145,7 @@ func TestMQTTMultipleSubscriptions(t *testing.T) {
 }
 
 func TestMQTTBadUnsubscribe(t *testing.T) {
-	client := wostmqtt.NewMqttClient(mqttCertFolder, mqttServerHostPort)
+	client := wostmqtt.NewMqttClient(mqttServerHostPort, caCertFile)
 	const timeout = 10
 
 	err := client.Connect(clientID, timeout)
@@ -157,7 +157,7 @@ func TestMQTTBadUnsubscribe(t *testing.T) {
 
 func TestMQTTPubNoConnect(t *testing.T) {
 	invalidHost := "localhost:1111"
-	client := wostmqtt.NewMqttClient(mqttCertFolder, invalidHost)
+	client := wostmqtt.NewMqttClient(invalidHost, caCertFile)
 	const timeout = 10
 	var msg1 = "Hello world 1"
 
@@ -170,7 +170,7 @@ func TestMQTTPubNoConnect(t *testing.T) {
 }
 
 func TestMQTTSubBeforeConnect(t *testing.T) {
-	client := wostmqtt.NewMqttClient(mqttCertFolder, mqttServerHostPort)
+	client := wostmqtt.NewMqttClient(mqttServerHostPort, caCertFile)
 	const timeout = 10
 	const msg = "hello 1"
 	var rx string

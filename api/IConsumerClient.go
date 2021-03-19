@@ -19,14 +19,14 @@ type IConsumerClient interface {
 	//  thingID is the unique ID of the Thing whose action is published
 	//  action is an object containing the action to request
 	//    senderID is the authenticated client ID of the sender
-	PublishAction(thingID string, action interface{}) error
+	PublishAction(thingID string, action map[string]interface{}) error
 
 	// PublishConfig requests a configuration update from a Thing.
 	// This is intended for consumers that want to configure a Thing. The consumer must have
 	// sufficient authorization otherwise this request is ignored.
 	//  thingID is the unique ID of the Thing to configure
 	//  config is an object containing the configuration request values
-	PublishConfig(thingID string, config interface{}) error
+	PublishConfig(thingID string, config map[string]interface{}) error
 
 	// SubscribeTD subscribes to receive updates to TDs from the WoST Hub
 	//
@@ -35,7 +35,7 @@ type IConsumerClient interface {
 	//    thingID is the ID of the Thing whose TD is received
 	//    td is an unmarshalled JSON document containing the received Thing Description
 	//    senderID is the authenticated client ID of the sender
-	SubscribeTD(thingID string, handler func(thingID string, td interface{}, senderID string))
+	SubscribeTD(thingID string, handler func(thingID string, td map[string]interface{}, senderID string))
 
 	// SubscribePropertyValues receives updates to Thing property values from the WoST Hub
 	//
@@ -44,7 +44,7 @@ type IConsumerClient interface {
 	//    thingID is the ID of the Thing whose values are received
 	//    values is an unmarshalled JSON document with property values: { "propname": "value", ...}
 	//    senderID is the authenticated client ID of the sender
-	SubscribePropertyValues(thingID string, handler func(thingID string, values interface{}, senderID string))
+	SubscribePropertyValues(thingID string, handler func(thingID string, values map[string]interface{}, senderID string))
 
 	// SubscribeEvents receives Thing events from the WoST hub.
 	//
@@ -53,5 +53,5 @@ type IConsumerClient interface {
 	//    thingID is the ID of the Thing whose event is received
 	//    event is an unmarshalled JSON document with event: {...}
 	//    senderID is the authenticated client ID of the sender
-	SubscribeEvent(thingID string, handler func(thingID string, event interface{}, senderID string))
+	SubscribeEvent(thingID string, handler func(thingID string, event map[string]interface{}, senderID string))
 }

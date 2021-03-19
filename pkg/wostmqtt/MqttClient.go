@@ -24,7 +24,7 @@ const TLSPort = 8883
 // MqttClient client wrapper around pahoClient
 // This addresses problems with reconnect and auto resubscribe while using clean session
 type MqttClient struct {
-	clientID string // unique ID of the client
+	// clientID string // unique ID of the client
 	hostPort string // host:port of server to connect to
 	pubQos   byte
 	subQos   byte
@@ -67,7 +67,7 @@ func (mqttClient *MqttClient) Connect(clientID string, timeout int) error {
 	// brokerURL := fmt.Sprintf("tls://mqtt.eclipse.org:8883/")
 	opts := pahomqtt.NewClientOptions()
 	opts.AddBroker(brokerURL)
-	opts.SetClientID(mqttClient.clientID)
+	opts.SetClientID(clientID)
 	opts.SetAutoReconnect(true)
 	opts.SetConnectTimeout(10 * time.Second)
 	opts.SetMaxReconnectInterval(60 * time.Second) // max wait 1 minute for a reconnect
@@ -79,13 +79,13 @@ func (mqttClient *MqttClient) Connect(clientID string, timeout int) error {
 
 	opts.SetOnConnectHandler(func(client pahomqtt.Client) {
 		logrus.Warningf("MqttMessenger.onConnect: Connected to server at %s. Connected=%v. ClientId=%s",
-			brokerURL, client.IsConnected(), mqttClient.clientID)
+			brokerURL, client.IsConnected(), clientID)
 		// Subscribe to addresss already registered by the app on connect or reconnect
 		mqttClient.resubscribe()
 	})
 	opts.SetConnectionLostHandler(func(client pahomqtt.Client, err error) {
 		logrus.Warningf("MqttMessenger.onConnectionLost: Disconnected from server %s. Error %s, ClientId=%s",
-			brokerURL, err, mqttClient.clientID)
+			brokerURL, err, clientID)
 	})
 	// if lastWillAddress != "" {
 	// 	opts.SetWill(lastWillAddress, lastWillValue, 1, false)
@@ -109,7 +109,7 @@ func (mqttClient *MqttClient) Connect(clientID string, timeout int) error {
 
 	logrus.Infof("MqttMessenger.Connect: Connecting to MQTT server: %s with clientID %s"+
 		" AutoReconnect and CleanSession are set.",
-		brokerURL, mqttClient.clientID)
+		brokerURL, clientID)
 
 	// FIXME: PahoMqtt disconnects when sending a lot of messages, like on startup of some adapters.
 	mqttClient.pahoClient = pahomqtt.NewClient(opts)
@@ -271,8 +271,8 @@ func (mqttClient *MqttClient) Unsubscribe(topic string) {
 
 // NewMqttMessenger creates a new MQTT messenger instance
 //  hostPort to connect to
-//  certFolder must contain the server certificate mqtt_srv.crt
-func NewMqttClient(hostPort string, certFolder string) *MqttClient {
+//  caCertFile must contain the server CA certificate filename
+func NewMqttClient(hostPort string, caCertFile string) *MqttClient {
 
 	messenger := &MqttClient{
 		hostPort:      hostPort,
@@ -281,7 +281,7 @@ func NewMqttClient(hostPort string, certFolder string) *MqttClient {
 		pahoClient:    nil,
 		subscriptions: make(map[string]*TopicSubscription, 0),
 		//messageChannel: make(chan *IncomingMessage),
-		tlsCACertFile:       certFolder + "/mqtt_srv.crt",
+		tlsCACertFile:       caCertFile,
 		tlsVerifyServerCert: true,
 		updateMutex:         &sync.Mutex{},
 	}
