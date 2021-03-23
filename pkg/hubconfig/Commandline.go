@@ -12,6 +12,16 @@ import (
 var flagsAreSet bool = false
 
 // SetHubCommandlineArgs creates common hub commandline flag commands for parsing commandlines
+//
+// -c            /path/to/hub.yaml optional alt configuration, default is {home}/config/hub.yaml
+// -home         /path/to/app/home    optional alternative application home folder/ Defa
+// -certsFolder  /path/to/alt/certs   optional certificate folder, eg when using mqtt. Default is {home}/certs
+// -configFolder /path/to/alt/config  optional alternative config, eg /etc/wost
+// -address      localhost            optional message bus address
+// -port         8883                 optional alternative port
+// -logFile      /path/to/hub.log optional logfile. Use to determine logs folder
+// -logLevel warning                  for extra logging, default is hub loglevel
+//
 func SetHubCommandlineArgs(config *HubConfig) {
 	// // workaround broken testing of go flags, as they define their own flags that cannot be re-initialized
 	// // in test mode this function can be called multiple times. Since flags cannot be
@@ -24,7 +34,7 @@ func SetHubCommandlineArgs(config *HubConfig) {
 	flag.String("c", "hub.yaml", "Set the hub configuration file ")
 	flag.StringVar(&config.Home, "home", config.Home, "Application working `folder`")
 
-	flag.StringVar(&config.Messenger.CertFolder, "certFolder", config.Messenger.CertFolder, "Optional certificate `folder` for TLS")
+	flag.StringVar(&config.Messenger.CertsFolder, "certsFolder", config.Messenger.CertsFolder, "Optional certificates directory for TLS")
 	flag.StringVar(&config.ConfigFolder, "configFolder", config.ConfigFolder, "Plugin configuration `folder`")
 	flag.StringVar(&config.Messenger.Address, "address", config.Messenger.Address, "Message bus hostname or address")
 	flag.IntVar(&config.Messenger.Port, "port", config.Messenger.Port, "Message bus server port")

@@ -38,11 +38,11 @@ type HubConfig struct {
 
 	// Configuration of hub client messaging
 	Messenger struct {
-		Address    string `yaml:"address"`           // address with hostname or ip of the message bus
-		Port       int    `yaml:"port,omitempty"`    // optional port, default is 8883 for MQTT TLS
-		CertFolder string `yaml:"certFolder"`        // Folder containing certificates, default is {home}/certs
-		Signing    bool   `yaml:"signing,omitempty"` // Message signing to be used by all publishers, default is false
-		Timeout    int    `yaml:"timeout,omitempty"` // Client connection timeout in seconds. 0 for indefinite
+		Address     string `yaml:"address"`           // address with hostname or ip of the message bus
+		Port        int    `yaml:"port,omitempty"`    // optional port, default is 8883 for MQTT TLS
+		CertsFolder string `yaml:"certFolder"`        // Folder containing certificates, default is {home}/certs
+		Signing     bool   `yaml:"signing,omitempty"` // Message signing to be used by all publishers, default is false
+		Timeout     int    `yaml:"timeout,omitempty"` // Client connection timeout in seconds. 0 for indefinite
 	} `yaml:"messenger"`
 
 	Home         string   `yaml:"home"`         // application home directory. Default is parent of executable.
@@ -81,7 +81,7 @@ func CreateDefaultHubConfig(homeFolder string) *HubConfig {
 		PluginFolder: path.Join(homeFolder, "./bin"),
 	}
 	// config.Messenger.CertsFolder = path.Join(homeFolder, "certs")
-	config.Messenger.CertFolder = path.Join(homeFolder, DefaultCertsFolder)
+	config.Messenger.CertsFolder = path.Join(homeFolder, DefaultCertsFolder)
 	// config.Messenger.CaCertFile = certsetup.CaCertFile
 	// config.Messenger.ServerCertFile = certsetup.ServerCertFile
 	// config.Messenger.ClientCertFile = certsetup.ClientCertFile
@@ -132,8 +132,8 @@ func ValidateConfig(config *HubConfig) error {
 		return err
 	}
 
-	if _, err := os.Stat(config.Messenger.CertFolder); os.IsNotExist(err) {
-		logrus.Errorf("TLS certificate folder '%s' not found\n", config.Messenger.CertFolder)
+	if _, err := os.Stat(config.Messenger.CertsFolder); os.IsNotExist(err) {
+		logrus.Errorf("TLS certificate folder '%s' not found\n", config.Messenger.CertsFolder)
 		return err
 	}
 	// Pluginfolder is either empty or must exist
