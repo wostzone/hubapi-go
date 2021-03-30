@@ -1,6 +1,11 @@
 package td
 
-import "github.com/sirupsen/logrus"
+import (
+	"fmt"
+
+	"github.com/sirupsen/logrus"
+	"github.com/wostzone/hubapi/api"
+)
 
 // tbd json-ld parsers:
 // Most popular; https://github.com/xeipuuv/gojsonschema
@@ -52,6 +57,15 @@ func SetThingVersion(td map[string]interface{}, version map[string]string) {
 	td["version"] = version
 }
 
+// SetThingTitle sets the title and description of the Thing in the TD
+//  td is a TD created with 'CreateTD'
+//  title of the Thing
+//  description of the Thing
+func SetThingDescription(td map[string]interface{}, title string, description string) {
+	td["title"] = title
+	td["description"] = description
+}
+
 // SetThingErrorStatus sets the error status of a Thing
 // This is set under the 'status' property, 'error' subproperty
 //  td is a TD created with 'CreateTD'
@@ -75,11 +89,38 @@ func SetTDForms(td map[string]interface{}, formList []map[string]interface{}) {
 	td["forms"] = formList
 }
 
+// CreateThingID creates a ThingID from the zone it belongs to, the hardware device ID and device Type
+// This creates a Thing ID: URN:zone:deviceID:deviceType
+//  zone is the name of the zone the device is part of
+//  deviceID is the ID of the device to use as part of the Thing ID
+func CreateThingID(zone string, deviceID string, deviceType api.DeviceType) string {
+	thingID := fmt.Sprintf("urn:%s:%s:%s", zone, deviceID, deviceType)
+	return thingID
+}
+
+// CreatePublisherThingID creates a globally unique Thing ID that includes the zone and publisher
+// name where the Thing originates from. The publisher is especially useful where protocol
+// bindings create thing IDs. In this case the publisher is the gateway used by the protocol binding
+// or the PB itself.
+//
+// This creates a Thing ID: URN:zone:publisher:deviceID:deviceType
+//  zone is the name of the zone the device is part of
+//  publisher is the name of the publisher that the thing originates from.
+//  deviceID is the ID of the device to use as part of the Thing ID
+func CreatePublisherThingID(zone string, publisher string, deviceID string, deviceType api.DeviceType) string {
+	thingID := fmt.Sprintf("urn:%s:%s:%s:%s", zone, publisher, deviceID, deviceType)
+	return thingID
+}
+
 // CreateTD creates a new Thing Description document with properties, events and actions
-func CreateTD(id string) map[string]interface{} {
+func CreateTD(thingID string, deviceType api.DeviceType) map[string]interface{} {
 	td := make(map[string]interface{}, 0)
 	td["@context"] = "http://www.w3.org/ns/td"
-	td["id"] = id
+	td["id"] = thingID
+	// TODO @type is a JSON-LD keyword to label using semantic tags, eg it needs a schema
+	if deviceType != "" {
+		td["@type"] = deviceType
+	}
 	td["properties"] = make(map[string]interface{})
 	td["events"] = make(map[string]interface{})
 	td["actions"] = make(map[string]interface{})

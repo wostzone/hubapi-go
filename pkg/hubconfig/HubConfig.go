@@ -46,6 +46,7 @@ type HubConfig struct {
 	} `yaml:"messenger"`
 
 	Home         string   `yaml:"home"`         // application home directory. Default is parent of executable.
+	Zone         string   `yaml:"zone"`         // zone this hub belongs to. Used as prefix in ThingID, default is local
 	ConfigFolder string   `yaml:"configFolder"` // location of configuration files. Default is ./config
 	PluginFolder string   `yaml:"pluginFolder"` // location of plugin binaries. Default is ./bin
 	Plugins      []string `yaml:"plugins"`      // names of plugins to start
@@ -79,6 +80,7 @@ func CreateDefaultHubConfig(homeFolder string) *HubConfig {
 		ConfigFolder: path.Join(homeFolder, "config"),
 		Plugins:      make([]string, 0),
 		PluginFolder: path.Join(homeFolder, "./bin"),
+		Zone:         "local",
 	}
 	// config.Messenger.CertsFolder = path.Join(homeFolder, "certs")
 	config.Messenger.CertsFolder = path.Join(homeFolder, DefaultCertsFolder)

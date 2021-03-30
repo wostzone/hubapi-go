@@ -13,6 +13,7 @@ import (
 )
 
 // !!! THIS REQUIRES A RUNNING MQTT SERVER ON LOCALHOST WITH CERTS !!!
+const zone = "test"
 
 func TestPublishAction(t *testing.T) {
 	logrus.Infof("--- TestPublishAction ---")
@@ -149,8 +150,9 @@ func TestPublishPropertyValues(t *testing.T) {
 func TestPublishTD(t *testing.T) {
 	logrus.Infof("--- TestPublishTD ---")
 	credentials := ""
-	thingID := "thing1"
-	td1 := td.CreateTD(thingID)
+	deviceID := "thing1"
+	thingID := td.CreateThingID(zone, deviceID, api.DeviceTypeSensor)
+	td1 := td.CreateTD(thingID, api.DeviceTypeSensor)
 	var rxTd map[string]interface{}
 
 	thingClient := mqttclient.NewMqttHubClient(mqttTestServerHostPort, mqttTestCaCertFile, "", credentials)
@@ -180,8 +182,9 @@ func TestPublishTD(t *testing.T) {
 func TestSubscribeAll(t *testing.T) {
 	logrus.Infof("--- TestSubscribeAll ---")
 	credentials := ""
-	thingID := "thing1"
-	td1 := td.CreateTD(thingID)
+	deviceID := "thing1"
+	thingID := td.CreateThingID(zone, deviceID, api.DeviceTypeSensor)
+	td1 := td.CreateTD(thingID, api.DeviceTypeSensor)
 	txTd, _ := json.Marshal(td1)
 	var rxTd []byte
 	var rxThing string

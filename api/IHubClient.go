@@ -57,7 +57,7 @@ type IHubClient interface {
 	// PublishTD publish a WoT Thing Description to the WoST hub
 	// This is intended for use by WoST Things and Hub plugins to notify consumers of the existance of a Thing
 	//  thingID is the unique ID of the Thing whose TD is published
-	//  td is an map containing the Thing Description
+	//  td is an map containing the Thing Description created with CreateTD
 	PublishTD(thingID string, td ThingTD) error
 
 	// Subscribe subscribes a handler to all messages from a Thing
