@@ -20,15 +20,15 @@ func TestCreateTD(t *testing.T) {
 	td.SetThingVersion(thing, versions)
 
 	// Define TD property
-	prop := td.CreateTDProperty("Prop1", "First property", api.PropertyTypeSensor)
+	prop := td.CreateProperty("Prop1", "First property", api.PropertyTypeSensor)
 	enumValues := make([]string, 0) //{"value1", "value2"}
-	td.SetTDPropertyEnum(prop, enumValues)
-	td.SetTDPropertyUnit(prop, "C")
-	td.SetTDPropertyDataTypeInteger(prop, 1, 10)
-	td.SetTDPropertyDataTypeNumber(prop, 1, 10)
-	td.SetTDPropertyDataTypeString(prop, 1, 10)
-	td.SetTDPropertyDataTypeObject(prop, nil)
-	td.SetTDPropertyDataTypeArray(prop, 3, 10)
+	td.SetPropertyEnum(prop, enumValues)
+	td.SetPropertyUnit(prop, "C")
+	td.SetPropertyDataTypeInteger(prop, 1, 10)
+	td.SetPropertyDataTypeNumber(prop, 1, 10)
+	td.SetPropertyDataTypeString(prop, 1, 10)
+	td.SetPropertyDataTypeObject(prop, nil)
+	td.SetPropertyDataTypeArray(prop, 3, 10)
 	td.AddTDProperty(thing, "prop1", prop)
 	// invalid prop should not blow up
 	td.AddTDProperty(thing, "prop2", nil)
@@ -44,7 +44,7 @@ func TestCreateTD(t *testing.T) {
 
 	// Define action
 	action1 := td.CreateTDAction("setChannel", "Change the channel")
-	actionProp := td.CreateTDProperty("channel", "Select channel", "input")
+	actionProp := td.CreateProperty("channel", "Select channel", "input")
 	required := []string{"channel"}
 	td.SetTDActionInput(action1, "string", actionProp, required)
 	td.SetTDActionOutput(action1, "string")

@@ -102,3 +102,5 @@ Thing properties can be used to describe sensors, actuators, internal attributes
 these Thing property types in its vocabulary. Therefore they are defined as WoST vocabulary with the prefix "wost:". Note this should really not be neccesary.
 
 The '@type' attribute is used to identify the type of property (different from the data type), as suggested by @sebastiankb in this discussion: https://github.com/w3c/wot-thing-description/issues/1079. Property types are defined in hubapi api/vocabulary.go, eg: "sensor", "actuator", "configuration", "state", "attr", "input", "output" where configuration is the only writable attribute, state reflects the internal device state and can change in runtime, and attr is an static descriptive attribute such as vendor, version, and such.
+
+Property names are part of the IoT schema. Without a recommended or commonly accepted schema, WoST uses vocabulary from existing schema definitions such as schema.org and iotschema.org.

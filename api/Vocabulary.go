@@ -3,33 +3,38 @@
 package api
 
 // DataType of configuration, input and ouput values.
-type DataType string
+// type DataType string
 
-// Available data types
+// Available data types. See WoT vocabulary WoTDataTypeXxx
 const (
-	// DataTypeArray value is an array of ?
-	DataTypeArray DataType = "array"
-	// DataTypeBool value is true/false, 1/0, on/off
-	DataTypeBool DataType = "boolean"
-	// DataTypeBytes value is encoded byte array
-	DataTypeBytes DataType = "wost:bytes"
-	// DataTypeDate ISO8601 date YYYY-MM-DDTHH:MM:SS.mmmZ
-	DataTypeDate DataType = "wost:date"
-	// DataTypeEnum value is one of a predefined set of string values, published in the 'enum info field'
-	DataTypeEnum DataType = "wost:enum"
-	// DataTypeInt value is an integer number
-	DataTypeInt DataType = "integer"
-	// value is a float number
-	DataTypeNumber DataType = "number"
-	// a secret string that is not published
-	// value is an object with its own property definitions
-	DataTypeObject DataType = "object"
-	// DataTypeSecret DataType = "wost:secret"
-	DataTypeString DataType = "string"
-	// 3D vector (x, y, z) or (lat, lon, 0)
-	// DataTypeVector DataType = "wost:vector"
-	// value is a json object
-	// DataTypeJSON DataType = "wost:json"
+// DataTypeArray value is an array of ?
+// DataTypeArray DataType = "array"
+// DataTypeBool value is true/false, 1/0, on/off
+// DataTypeBool DataType = "boolean"
+// DataTypeBytes value is encoded byte array
+// DataTypeBytes DataType = "wost:bytes"
+// DataTypeDate ISO8601 date YYYY-MM-DDTHH:MM:SS.mmmZ
+// DataTypeDate DataType = "wost:date"
+// DataTypeEnum value is one of a predefined set of string values, published in the 'enum info field'
+// DataTypeEnum DataType = "wost:enum"
+// DataTypeInt value is an integer number
+// DataTypeInt DataType = "integer"
+// value is a float number
+// DataTypeNumber DataType = "number"
+// a secret string that is not published
+// value is an object with its own property definitions
+// DataTypeObject DataType = "object"
+// DataTypeSecret DataType = "wost:secret"
+// DataTypeString DataType = "string"
+// 3D vector (x, y, z) or (lat, lon, 0)
+// DataTypeVector DataType = "wost:vector"
+// value is a json object
+// DataTypeJSON DataType = "wost:json"
+)
+
+// WoST attributes used in properties
+const (
+	AttrNameValue = "value"
 )
 
 // IoT Device types
@@ -60,6 +65,7 @@ const (
 	DeviceTypeOnOffSwitch    DeviceType = "onOffSwitch"    // Node is a physical on/off switch
 	DeviceTypePowerMeter     DeviceType = "powerMeter"     // Node is a power meter
 	DeviceTypeSensor         DeviceType = "sensor"         // Node is a single sensor (volt,...)
+	DeviceTypeService        DeviceType = "service"        // Node provides a service
 	DeviceTypeSmartlight     DeviceType = "smartlight"     // Node is a smart light, eg philips hue
 	DeviceTypeThermometer    DeviceType = "thermometer"    // Node is a temperature meter
 	DeviceTypeThermostat     DeviceType = "thermostat"     // Node is a thermostat control unit
@@ -157,6 +163,7 @@ const (
 	PropNamePassword        string = "password" // password to connect. Value is not published.
 	PropNamePlay            string = "avplay"
 	PropNamePollInterval    string = "pollInterval" // polling interval in seconds
+	PropNamePort            string = "port"         // network address port
 	PropNamePowerSource     string = "powerSource"  // battery, usb, mains
 	PropNameProduct         string = "product"      // device product or model name
 	PropNamePublicKey       string = "publicKey"    // public key for encrypting sensitive configuration settings

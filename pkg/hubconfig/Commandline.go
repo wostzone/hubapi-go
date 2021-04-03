@@ -97,6 +97,15 @@ func LoadPluginConfig(homeFolder string, pluginName string, pluginConfig interfa
 			break
 		}
 	}
+	// plugin config is optional
+	if pluginName != "" && pluginConfig != nil {
+		pluginConfigFile := path.Join(hubConfig.ConfigFolder, pluginName+".yaml")
+		err := LoadConfig(pluginConfigFile, pluginConfig)
+		if err != nil {
+			logrus.Infof("Plugin configuration file %s not found. Ignored", pluginConfigFile)
+		}
+	}
+
 	logrus.Infof("Using %s as hub config file", hubConfigFile)
 	err1 := LoadConfig(hubConfigFile, hubConfig)
 	if err1 != nil {
@@ -106,14 +115,6 @@ func LoadPluginConfig(homeFolder string, pluginName string, pluginConfig interfa
 	err2 := ValidateConfig(hubConfig)
 	if err2 != nil {
 		return hubConfig, err2
-	}
-	if pluginName != "" && pluginConfig != nil {
-		pluginConfigFile := path.Join(hubConfig.ConfigFolder, pluginName+".yaml")
-		err3 := LoadConfig(pluginConfigFile, pluginConfig)
-		if err3 != nil {
-			// ignore errors. The plugin configuration file is optional
-			// return hubConfig, err3
-		}
 	}
 	return hubConfig, nil
 }

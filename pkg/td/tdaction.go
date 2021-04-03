@@ -1,14 +1,16 @@
 // Package td with TD action creation
 package td
 
+import "github.com/wostzone/hubapi/api"
+
 // CreateTDAction creates a new TD action description
 //  title for presentation
 //  description optional extra description of what the action does
 // Returns an action object
 func CreateTDAction(title string, description string) map[string]interface{} {
 	action := make(map[string]interface{}, 0)
-	action["title"] = title
-	action["description"] = description
+	action[api.WoTTitle] = title
+	action[api.WoTDescription] = description
 
 	return action
 }
@@ -35,10 +37,10 @@ func SetTDActionInput(action map[string]interface{},
 	requiredProperties []string) {
 
 	input := make(map[string]interface{}, 0)
-	input["type"] = inputDataType
-	input["properties"] = properties
-	input["required"] = requiredProperties
-	action["input"] = input
+	input[api.WoTDataType] = inputDataType
+	input[api.WoTProperties] = properties
+	input[api.WoTRequired] = requiredProperties
+	action[api.WoTInput] = input
 }
 
 // SetTDActionForms sets the forms section of the action, if needed
@@ -47,7 +49,7 @@ func SetTDActionInput(action map[string]interface{},
 //  action to add form to
 //  forms with list of forms to add. See also CreateForm to create a single form
 func SetTDActionForms(action map[string]interface{}, forms []map[string]interface{}) {
-	action["forms"] = forms
+	action[api.WoTForms] = forms
 }
 
 // SetTDActionOutput sets the output section of the action
@@ -56,6 +58,6 @@ func SetTDActionForms(action map[string]interface{}, forms []map[string]interfac
 //  outputType "object", "string", "number", "int"
 func SetTDActionOutput(action map[string]interface{}, outputType string) {
 	output := make(map[string]interface{}, 0)
-	output["type"] = outputType
-	action["output"] = output
+	output[api.WoTDataType] = outputType
+	action[api.WoTOutput] = output
 }

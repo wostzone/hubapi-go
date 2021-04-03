@@ -2,6 +2,7 @@ package td
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/wostzone/hubapi/api"
@@ -16,7 +17,7 @@ import (
 //  name of action to add
 //  action created with 'CreateAction'
 func AddTDAction(td map[string]interface{}, name string, action interface{}) {
-	actions := td["actions"].(map[string]interface{})
+	actions := td[api.WoTActions].(map[string]interface{})
 	if action == nil {
 		logrus.Errorf("Add action '%s' to TD. Action is nil", name)
 	} else {
@@ -29,7 +30,7 @@ func AddTDAction(td map[string]interface{}, name string, action interface{}) {
 //  name of action to add
 //  event created with 'CreateEvent'
 func AddTDEvent(td map[string]interface{}, name string, event interface{}) {
-	events := td["events"].(map[string]interface{})
+	events := td[api.WoTEvents].(map[string]interface{})
 	if event == nil {
 		logrus.Errorf("Add event '%s' to TD. Event is nil.", name)
 	} else {
@@ -42,7 +43,7 @@ func AddTDEvent(td map[string]interface{}, name string, event interface{}) {
 //  name of property to add
 //  property created with 'CreateProperty'
 func AddTDProperty(td map[string]interface{}, name string, property interface{}) {
-	props := td["properties"].(map[string]interface{})
+	props := td[api.WoTProperties].(map[string]interface{})
 	if property == nil {
 		logrus.Errorf("Add property '%s' to TD. Propery is nil.", name)
 	} else {
@@ -50,11 +51,22 @@ func AddTDProperty(td map[string]interface{}, name string, property interface{})
 	}
 }
 
+// RemoveTDProperty removes a property from the TD.
+func RemoveTDProperty(td map[string]interface{}, name string) {
+	props := td[api.WoTProperties].(map[string]interface{})
+	if props == nil {
+		logrus.Errorf("RemoveTDProperty: TD does not have any properties.")
+		return
+	}
+	props[name] = nil
+
+}
+
 // SetThingVersion adds or replace Thing version info in the TD
 //  td is a TD created with 'CreateTD'
 //  version with map of 'name: version'
 func SetThingVersion(td map[string]interface{}, version map[string]string) {
-	td["version"] = version
+	td[api.WoTVersion] = version
 }
 
 // SetThingTitle sets the title and description of the Thing in the TD
@@ -62,8 +74,8 @@ func SetThingVersion(td map[string]interface{}, version map[string]string) {
 //  title of the Thing
 //  description of the Thing
 func SetThingDescription(td map[string]interface{}, title string, description string) {
-	td["title"] = title
-	td["description"] = description
+	td[api.WoTTitle] = title
+	td[api.WoTDescription] = description
 }
 
 // SetThingErrorStatus sets the error status of a Thing
@@ -86,7 +98,7 @@ func SetThingErrorStatus(td map[string]interface{}, errorStatus string) {
 //  td to add form to
 //  forms with list of forms to add. See also CreateForm to create a single form
 func SetTDForms(td map[string]interface{}, formList []map[string]interface{}) {
-	td["forms"] = formList
+	td[api.WoTForms] = formList
 }
 
 // CreateThingID creates a ThingID from the zone it belongs to, the hardware device ID and device Type
@@ -115,14 +127,15 @@ func CreatePublisherThingID(zone string, publisher string, deviceID string, devi
 // CreateTD creates a new Thing Description document with properties, events and actions
 func CreateTD(thingID string, deviceType api.DeviceType) map[string]interface{} {
 	td := make(map[string]interface{}, 0)
-	td["@context"] = "http://www.w3.org/ns/td"
-	td["id"] = thingID
+	td[api.WoTAtContext] = "http://www.w3.org/ns/td"
+	td[api.WoTID] = thingID
 	// TODO @type is a JSON-LD keyword to label using semantic tags, eg it needs a schema
 	if deviceType != "" {
-		td["@type"] = deviceType
+		td[api.WoTAtType] = deviceType
 	}
-	td["properties"] = make(map[string]interface{})
-	td["events"] = make(map[string]interface{})
-	td["actions"] = make(map[string]interface{})
+	td[api.WoTCreated] = time.Now().Format(api.TimeFormat)
+	td[api.WoTActions] = make(map[string]interface{})
+	td[api.WoTEvents] = make(map[string]interface{})
+	td[api.WoTProperties] = make(map[string]interface{})
 	return td
 }

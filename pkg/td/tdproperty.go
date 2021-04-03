@@ -4,47 +4,62 @@ import "github.com/wostzone/hubapi/api"
 
 // Thing property creation
 
-// CreateTDProperty creates a new property instance
+// CreateProperty creates a new property instance
 //  title propery title for presentation
 //  description optional extra description of what the property does
 //  propType provides @type value for a property
 //  writable property is a configuration value and is writable
-func CreateTDProperty(title string, description string, propType api.ThingPropType) map[string]interface{} {
+func CreateProperty(title string, description string, propType api.ThingPropType) map[string]interface{} {
 
 	var writable = (propType == api.PropertyTypeConfig)
 	prop := make(map[string]interface{}, 0)
-	prop["@type"] = propType
-	prop["title"] = title
+	prop[api.WoTAtType] = propType
+	prop[api.WoTTitle] = title
 	if description != "" {
-		prop["description"] = description
+		prop[api.WoTDescription] = description
 	}
 	// default is read-only
 	if writable {
-		prop["writable"] = writable
+		prop["writable"] = writable //
 		// see https://www.w3.org/TR/2020/WD-wot-thing-description11-20201124/#example-29
-		prop["readOnly"] = !writable
-		prop["writeOnly"] = writable
+		prop[api.WoTReadOnly] = !writable
+		prop[api.WoTWriteOnly] = writable
 	}
 	return prop
 }
 
-func SetTDPropertyEnum(prop map[string]interface{}, enumValues ...interface{}) {
-	prop["enum"] = enumValues
+// Return the value of a property in the TD
+// If the property doesn't exist in the TD or there is not value attribute, then found returns false
+func GetPropertyValue(thingTD map[string]interface{}, propName string) (value string, found bool) {
+	props, found := thingTD[api.WoTProperties].(map[string]interface{})
+	if !found || props == nil {
+		return
+	}
+	propOfName, found := props[propName].(map[string]interface{})
+	if !found || propOfName == nil {
+		return // TD does not have this property or it is not a map[string]interface[}
+	}
+	valueInterface, found := propOfName[api.AttrNameValue]
+	if found && valueInterface != nil {
+		value = valueInterface.(string)
+	}
+	return value, found
 }
 
-func SetTDPropertyUnit(prop map[string]interface{}, unit string) {
-	prop["unit"] = unit
+// SetPropertyEnum sets a enumerated list of valid values of a property
+func SetPropertyEnum(prop map[string]interface{}, enumValues ...interface{}) {
+	prop[api.WoTEnum] = enumValues
 }
 
-// SetTDPropertyDataTypeArray sets the property data type as an array (of ?)
+// SetPropertyDataTypeArray sets the property data type as an array (of ?)
 // If maxItems is 0, both minItems and maxItems are ignored
 //  minItems is the minimum nr of items required
 //  maxItems sets the maximum nr of items required
-func SetTDPropertyDataTypeArray(prop map[string]interface{}, minItems uint, maxItems uint) {
-	prop["type"] = api.DataTypeArray
+func SetPropertyDataTypeArray(prop map[string]interface{}, minItems uint, maxItems uint) {
+	prop[api.WoTDataType] = api.WoTDataTypeArray
 	if maxItems > 0 {
-		prop["minItems"] = minItems
-		prop["maxItems"] = maxItems
+		prop[api.WoTMinItems] = minItems
+		prop[api.WoTMaxItems] = maxItems
 	}
 }
 
@@ -52,40 +67,56 @@ func SetTDPropertyDataTypeArray(prop map[string]interface{}, minItems uint, maxI
 // If min and max are both 0, they are ignored
 //  min is the minimum value
 //  max sets the maximum value
-func SetTDPropertyDataTypeInteger(prop map[string]interface{}, min int, max int) {
-	prop["type"] = api.DataTypeInt
+func SetPropertyDataTypeInteger(prop map[string]interface{}, min int, max int) {
+	prop[api.WoTDataType] = api.WoTDataTypeInteger
 	if !(min == 0 && max == 0) {
-		prop["minimum"] = min
-		prop["maximum"] = max
+		prop[api.WoTMinimum] = min
+		prop[api.WoTMaximum] = max
 	}
 }
 
-// SetTDPropertyDataTypeNumber sets the property data type as floating point number
+// SetPropertyDataTypeNumber sets the property data type as floating point number
 // If min and max are both 0, they are ignored
 //  min is the minimum value
 //  max sets the maximum value
-func SetTDPropertyDataTypeNumber(prop map[string]interface{}, min float64, max float64) {
-	prop["type"] = api.DataTypeNumber
+func SetPropertyDataTypeNumber(prop map[string]interface{}, min float64, max float64) {
+	prop[api.WoTDataType] = api.WoTDataTypeNumber
 	if !(min == 0 && max == 0) {
-		prop["minimum"] = min
-		prop["maximum"] = max
+		prop[api.WoTMinimum] = min
+		prop[api.WoTMaximum] = max
 	}
 }
 
-// SetTDPropertyDataTypeObject sets the property data type as an object
-func SetTDPropertyDataTypeObject(prop map[string]interface{}, object interface{}) {
-	prop["type"] = api.DataTypeObject
-	prop["object"] = object
+// SetPropertyDataTypeObject sets the property data type as an object
+func SetPropertyDataTypeObject(prop map[string]interface{}, object interface{}) {
+	prop[api.WoTDataType] = api.WoTDataTypeObject
+	prop[api.WoTDataTypeObject] = object
 }
 
-// SetTDPropertyDataTypeString sets the property data type as string
+// SetPropertyDataTypeString sets the property data type as string
 // If minLength and maxLength are both 0, they are ignored
 //  minLength is the minimum value
 //  maxLength sets the maximum value
-func SetTDPropertyDataTypeString(prop map[string]interface{}, minLength int, maxLength int) {
-	prop["type"] = api.DataTypeString
+func SetPropertyDataTypeString(prop map[string]interface{}, minLength int, maxLength int) {
+	prop["type"] = api.WoTDataTypeString
 	if !(minLength == 0 && maxLength == 0) {
-		prop["minLength"] = minLength
-		prop["maxLength"] = maxLength
+		prop[api.WoTMinLength] = minLength
+		prop[api.WoTMaxLength] = maxLength
 	}
+}
+
+// SetTDPropertyEnum sets the unit of a property
+func SetPropertyUnit(prop map[string]interface{}, unit string) {
+	prop[api.WoTUnit] = unit
+}
+
+// SetTDPropertyEnum sets the value of a property at the time of TD creation
+// Useful for attributes or configuration properties that don't change very often. When a TD is received
+// it can be usable immediately without waiting for value updates.
+// Note1: it is recommended to only set values for properties that rarely change, and when
+// they do change to update the TD.
+// Note2: This is optional and not part of the WoT specification. It is however allowed
+// by the specification (although it might need a schema specified???)
+func SetPropertyValue(prop map[string]interface{}, value string) {
+	prop[api.AttrNameValue] = value
 }

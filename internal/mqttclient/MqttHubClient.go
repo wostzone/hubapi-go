@@ -189,8 +189,13 @@ func (client *MqttHubClient) SubscribeToPropertyValues(
 }
 
 // SubscribeTD subscribes to receive updates to TDs from the WoST Hub
+//  thingID is the full ID of a thing, or "" to subscribe to all thingIDs
 func (client *MqttHubClient) SubscribeToTD(
 	thingID string, handler func(thingID string, thingTD api.ThingTD, senderID string)) {
+
+	if thingID == "" {
+		thingID = "+"
+	}
 	topic := strings.ReplaceAll(api.TopicThingTD, "{id}", thingID)
 	// local copy of arguments
 	subscribedThingID := thingID
@@ -198,12 +203,16 @@ func (client *MqttHubClient) SubscribeToTD(
 	client.mqttClient.Subscribe(topic, func(address string, message []byte) {
 		// FIXME: determine sender and format for td message
 		sender := ""
+		// TODO: support for topics where thingID isn't the second part
+		addressParts := strings.Split(address, "/")
+		_ = subscribedThingID
+		rxThingID := addressParts[1]
 		td := make(map[string]interface{})
 		err := json.Unmarshal(message, &td)
 		if err != nil {
 			logrus.Errorf("Received message on topic '%s' but unmarshal failed: %s", topic, err)
 		} else {
-			subscribedHandler(subscribedThingID, td, sender)
+			subscribedHandler(rxThingID, td, sender)
 		}
 	})
 }

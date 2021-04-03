@@ -4,7 +4,7 @@ This repository defines the API's to use to connect to the WoST Hub and exchange
 
 ## Project Status
 
-Status: Alpha, expect breaking changes
+Status: The status of this library is Alpha. It is functional but breaking changes must be expected.
 
 This library provides the Golang implementation of the MQTT API of the WoST Hub. MQTT is the most direct
 method to talk to the Hub. There is no need for Golang developers to use HTTP or Websockets.
