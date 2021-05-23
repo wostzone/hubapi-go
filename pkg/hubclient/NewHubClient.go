@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/wostzone/hubapi/api"
-	"github.com/wostzone/hubapi/internal/mqttclient"
-	"github.com/wostzone/hubapi/pkg/certsetup"
-	"github.com/wostzone/hubapi/pkg/hubconfig"
+	"github.com/wostzone/hubapi-go/api"
+	"github.com/wostzone/hubapi-go/internal/mqttclient"
+	"github.com/wostzone/hubapi-go/pkg/certsetup"
+	"github.com/wostzone/hubapi-go/pkg/hubconfig"
 )
 
 // NewHubClient creates a new hub connection for things, consumers and plugins
@@ -32,5 +32,18 @@ func NewPluginClient(pluginID string, hubConfig *hubconfig.HubConfig) api.IHubCl
 	clientKeyFile := path.Join(hubConfig.CertsFolder, certsetup.ClientKeyFile)
 
 	client := mqttclient.NewMqttHubPluginClient(pluginID, hostPort, caCertFile, clientCertFile, clientKeyFile)
+	return client
+}
+
+// NewDeviceClient creates a new hub mqtt connection for devices that publish Things.
+// devices must authenticate with a client certificate assigned during provisioning.
+//   deviceID thingID of the device connecting
+//   hostPort address and port to connect to
+//   caCertFile CA certificate for verifying the TLS connections
+//   clientCertFile client certificate to identify the device
+//   clientKeyFile for certificate authentication
+func NewDeviceClient(deviceID string, hostPort string, caCertFile string, clientCertFile string, clientKeyFile string) api.IHubClient {
+
+	client := mqttclient.NewMqttHubPluginClient(deviceID, hostPort, caCertFile, clientCertFile, clientKeyFile)
 	return client
 }

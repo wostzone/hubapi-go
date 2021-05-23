@@ -1,15 +1,20 @@
 package mqttclient_test
 
 import (
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
+	"io/ioutil"
 	"testing"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"github.com/wostzone/hubapi/api"
-	"github.com/wostzone/hubapi/internal/mqttclient"
-	"github.com/wostzone/hubapi/pkg/td"
+	"github.com/stretchr/testify/require"
+	"github.com/wostzone/hubapi-go/api"
+	"github.com/wostzone/hubapi-go/internal/mqttclient"
+	"github.com/wostzone/hubapi-go/pkg/certsetup"
+	"github.com/wostzone/hubapi-go/pkg/td"
 )
 
 const zone = "test"
@@ -17,6 +22,24 @@ const mqttTestConsumerConnection = "localhost:33101"
 const mqttTestThingConnection = "localhost:33101"
 
 // THIS USES THE SETUP IN MqttClient_test.go
+
+// Custom test to production
+// func TestPublishCustom(t *testing.T) {
+// 	logrus.Infof("--- TestPublishCustom ---")
+// 	thingID := "urn:TestPublishCustom"
+
+// 	// thingClient := mqttclient.NewMqttHubClient("localhost:8883", "/home/henk/bin/wost/certs/ca.crt", "", "")
+// 	thingClient := mqttclient.NewMqttHubPluginClient("henksplugin",
+// 		"localhost:9883", "/home/henk/bin/wost/certs/ca.crt",
+// 		"/home/henk/bin/wost/certs/client.crt", "/home/henk/bin/wost/certs/client.key")
+
+// 	err := thingClient.Start()
+// 	assert.NoError(t, err)
+// 	thingTD := td.CreateTD(thingID, api.DeviceTypeService)
+// 	thingClient.PublishTD(thingID, thingTD)
+// 	time.Sleep(time.Second)
+// 	thingClient.Stop()
+// }
 
 func TestPublishAction(t *testing.T) {
 	logrus.Infof("--- TestPublishAction ---")
@@ -220,6 +243,48 @@ func TestSubscribeAll(t *testing.T) {
 	assert.NotEqual(t, td1, rxTd)
 
 	// TODO, check if it was received by a consumer using a consumer client
+	thingClient.Stop()
+	pluginClient.Stop()
+}
+
+func TestRequestProvisioning(t *testing.T) {
+	pluginID := "plugin1"
+	deviceID := "thing1"
+	thingID := td.CreateThingID(zone, deviceID, api.DeviceTypeSensor)
+
+	// setup a provisioning server
+	pluginClient := mqttclient.NewMqttHubPluginClient(
+		pluginID, mqttTestConsumerConnection, mqttTestCaCertFile, mqttTestClientCertFile, mqttTestClientKeyFile)
+	err := pluginClient.Start()
+	require.NoError(t, err)
+
+	caCertPEM, _ := ioutil.ReadFile(mqttTestCaCertFile)
+	caCertBlock, _ := pem.Decode(caCertPEM)
+	caCert, err := x509.ParseCertificate(caCertBlock.Bytes)
+	caKeyPEM, _ := ioutil.ReadFile(mqttTestCaKeyFile)
+	caKeyBlock, _ := pem.Decode(caKeyPEM)
+	caPrivKey, err := x509.ParsePKCS1PrivateKey(caKeyBlock.Bytes)
+
+	pluginClient.SubscribeToProvisionRequest(func(thingID string, csrPEM []byte, sender string) {
+		certPEM, err := certsetup.SignCertificate(csrPEM, caCert, caPrivKey, time.Second)
+		assert.NoError(t, err)
+		pluginClient.PublishProvisionResponse(thingID, certPEM)
+	})
+
+	// create a provisioning request for a thing
+	thingClient := mqttclient.NewMqttHubClient(mqttTestThingConnection, mqttTestCaCertFile, "", "")
+	err = thingClient.Start()
+	assert.NoError(t, err)
+
+	thingKeyPEM, _ := ioutil.ReadFile(mqttTestClientKeyFile)
+	thingKeyBlock, _ := pem.Decode(thingKeyPEM)
+	thingPrivKey, err := x509.ParsePKCS1PrivateKey(thingKeyBlock.Bytes)
+	csrPEM, err := certsetup.CreateCSR(thingPrivKey, thingID)
+	assert.NoError(t, err)
+	assert.NotNil(t, csrPEM)
+	err = thingClient.PublishProvisionRequest(thingID, csrPEM)
+	assert.NoError(t, err)
+
 	thingClient.Stop()
 	pluginClient.Stop()
 }

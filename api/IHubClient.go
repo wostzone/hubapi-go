@@ -3,11 +3,12 @@ package api
 
 // Message types to receive
 const (
-	MessageTypeAction = "action"
-	MessageTypeConfig = "config" // update property config
-	MessageTypeEvent  = "event"
-	MessageTypeTD     = "td"
-	MessageTypeValues = "values" // receive property values
+	MessageTypeAction    = "action"
+	MessageTypeConfig    = "config" // update property config
+	MessageTypeEvent     = "event"
+	MessageTypeTD        = "td"
+	MessageTypeValues    = "values"    // receive property values
+	MessageTypeProvision = "provision" // receive a provision request message
 )
 
 // ThingTD contains the Thing Description document
@@ -17,11 +18,6 @@ type ThingTD map[string]interface{}
 // the protocol bindings.
 // Intended for Things, consumers and plugins to exchange messages.
 type IHubClient interface {
-	// Start the client connection with the Hub
-	Start() error
-
-	// End the hub connection
-	Stop()
 
 	// PublishAction requests an action from a Thing.
 	// This is intended for consumers that want to control a Thing. The consumer must have
@@ -56,6 +52,31 @@ type IHubClient interface {
 	//  thingID is the unique ID of the Thing whose TD is published
 	//  td is an map containing the Thing Description created with CreateTD
 	PublishTD(thingID string, td ThingTD) error
+
+	// RequestProvisioning sends a request for (re)provisioning.
+	// The server processes the request and replies with an updated certificate if the request is approved.
+	// Certificate renewals will receive an update right away. Requests that need admin approval
+	// will receive a timeout. The server will cache the request until the administrator has approved
+	// or denied the request. On the next request, the server will send the response.
+	// The recommended approach is to issue this request:
+	//  - when not provisioned: on power on, every hour for the first day, and once a day after
+	//  - when provisioned: halfway through the certificate lifetime
+	//
+	// The CSR must contain the following fields:
+	//
+	//
+	//  thingID of the device requesting to be provisioned
+	//  csrPEM is the PEM encoded certificate signing request (see certsetup.CreateCSR)
+	//  waitSec defines how many seconds to wait for a response
+	// returns a PEM encoded signed certificate used for authentication, or a response 'timeout'.
+	// If timeout is false and no certificate is received, the request was denied.
+	RequestProvisioning(thingID string, csrPEM []byte, waitSec uint) (certPEM []byte, timeout bool)
+
+	// Start the client connection with the Hub
+	Start() error
+
+	// End the hub connection
+	Stop()
 
 	// Subscribe subscribes a handler to all messages from a Thing
 	//  thingID is the unique ID of the Thing that is be subscribed to. Use "" for all things (use with caution)

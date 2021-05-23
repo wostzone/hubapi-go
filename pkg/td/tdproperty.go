@@ -1,6 +1,6 @@
 package td
 
-import "github.com/wostzone/hubapi/api"
+import "github.com/wostzone/hubapi-go/api"
 
 // Thing property creation
 

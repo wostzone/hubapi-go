@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/wostzone/hubapi/api"
-	"github.com/wostzone/hubapi/pkg/td"
+	"github.com/wostzone/hubapi-go/api"
+	"github.com/wostzone/hubapi-go/pkg/td"
 )
 
 const zone = "test"

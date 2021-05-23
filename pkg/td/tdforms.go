@@ -1,7 +1,7 @@
 // Package td with TD form creation
 package td
 
-import "github.com/wostzone/hubapi/api"
+import "github.com/wostzone/hubapi-go/api"
 
 // CreateTDForm creates a form object description how to connect to a Thing via the Hub
 //

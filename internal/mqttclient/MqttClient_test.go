@@ -10,15 +10,16 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wostzone/hubapi/internal/mqttclient"
-	"github.com/wostzone/hubapi/pkg/certsetup"
-	"github.com/wostzone/hubapi/pkg/mosquitto"
+	"github.com/wostzone/hubapi-go/internal/mqttclient"
+	"github.com/wostzone/hubapi-go/pkg/certsetup"
+	"github.com/wostzone/hubapi-go/pkg/mosquitto"
 )
 
 // Use test/mosquitto-test.conf
 const mqttTestPluginConnection = "localhost:33100"
 
 const mqttTestCaCertFile = "certs/" + certsetup.CaCertFile
+const mqttTestCaKeyFile = "certs/" + certsetup.CaKeyFile
 const mqttTestClientCertFile = "certs/" + certsetup.ClientCertFile
 const mqttTestClientKeyFile = "certs/" + certsetup.ClientKeyFile
 
@@ -37,7 +38,7 @@ func TestMain(m *testing.M) {
 	os.Chdir(home)
 	certsFolder := path.Join(home, "certs")
 	configFolder := path.Join(home, "config")
-	certsetup.CreateCertificates("localhost", certsFolder)
+	certsetup.CreateCertificateBundle("localhost", certsFolder)
 	mosqConfigPath := path.Join(configFolder, mosquittoConfigFile)
 
 	mosquittoCmd, err := mosquitto.Launch(mosqConfigPath)

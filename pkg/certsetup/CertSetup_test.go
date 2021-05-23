@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wostzone/hubapi/pkg/certsetup"
+	"github.com/wostzone/hubapi-go/pkg/certsetup"
 )
 
 func TestTLSCertificateGeneration(t *testing.T) {
@@ -79,5 +79,5 @@ func TestCreateCerts(t *testing.T) {
 	hostname := "localhost"
 	cwd, _ := os.Getwd()
 	certFolder := path.Join(cwd, "../../test/certs")
-	certsetup.CreateCertificates(hostname, certFolder)
+	certsetup.CreateCertificateBundle(hostname, certFolder)
 }

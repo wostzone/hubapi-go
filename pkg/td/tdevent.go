@@ -1,7 +1,7 @@
 // Package td with TD event creation
 package td
 
-import "github.com/wostzone/hubapi/api"
+import "github.com/wostzone/hubapi-go/api"
 
 // CreateTDEvent creates a new TD event description
 //  title title for presentation

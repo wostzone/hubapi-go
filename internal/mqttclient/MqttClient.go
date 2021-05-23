@@ -97,11 +97,11 @@ func (mqttClient *MqttClient) Connect(clientCert *tls.Certificate, userName stri
 	var rootCA *x509.CertPool
 	if mqttClient.tlsCACertFile != "" {
 		rootCA = x509.NewCertPool()
-		caFile, err := ioutil.ReadFile(mqttClient.tlsCACertFile)
+		caCertPEM, err := ioutil.ReadFile(mqttClient.tlsCACertFile)
 		if err != nil {
 			logrus.Errorf("MqttClient.Connect: Unable to read CA certificate chain: %s. Ignored.", err)
 		}
-		rootCA.AppendCertsFromPEM([]byte(caFile))
+		rootCA.AppendCertsFromPEM([]byte(caCertPEM))
 
 	}
 	tlsConfig := &tls.Config{

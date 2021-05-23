@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/wostzone/hubapi/api"
+	"github.com/wostzone/hubapi-go/api"
 )
 
 // tbd json-ld parsers:

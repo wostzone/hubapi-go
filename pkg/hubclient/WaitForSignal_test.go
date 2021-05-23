@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/wostzone/hubapi/pkg/hubclient"
+	"github.com/wostzone/hubapi-go/pkg/hubclient"
 )
 
 func TestWaitForSignal(t *testing.T) {

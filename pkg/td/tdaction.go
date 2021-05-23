@@ -1,7 +1,7 @@
 // Package td with TD action creation
 package td
 
-import "github.com/wostzone/hubapi/api"
+import "github.com/wostzone/hubapi-go/api"
 
 // CreateTDAction creates a new TD action description
 //  title for presentation

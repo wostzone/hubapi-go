@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/wostzone/hubapi/api"
+	"github.com/wostzone/hubapi-go/api"
 )
 
 /* Client library with the MQTT API to the Hub using (tbd):
@@ -29,6 +30,39 @@ type MqttHubClient struct {
 	mqttClient *MqttClient
 	timeoutSec int
 	// senderVerification bool
+}
+
+// RequestProvisioning sends a request to (re)provision this device
+// This subscribes to a response and waits a few seconds
+func (client *MqttHubClient) RequestProvisioning(thingID string, csrPEM []byte, waitSec uint,
+) (certPEM []byte, timeout bool) {
+	done := make(chan bool, 1)
+
+	// listen for the response
+	// TODO: MQTT 5 supports request-response
+	respTopic := strings.ReplaceAll(api.TopicProvisionResponse, "{id}", thingID)
+	client.mqttClient.Subscribe(respTopic, func(address string, message []byte) {
+		certPEM = message
+		timeout = false
+		done <- true
+	})
+
+	reqTopic := strings.ReplaceAll(api.TopicProvisionRequest, "{id}", thingID)
+	err := client.mqttClient.Publish(reqTopic, csrPEM)
+	if err != nil {
+		return nil, true
+	}
+
+	// wait for response or timeout
+	select {
+	case <-done:
+		logrus.Infof("RequestProvisioning: Received response")
+	case <-time.After(time.Second * time.Duration(waitSec)):
+		logrus.Infof("RequestProvisioning: timeout after %d seconds", waitSec)
+		timeout = true
+	}
+	client.mqttClient.Unsubscribe(respTopic)
+	return certPEM, timeout
 }
 
 // Start the client connection
@@ -93,6 +127,24 @@ func (client *MqttHubClient) PublishTD(thingID string, td api.ThingTD) error {
 	return err
 }
 
+// PublishProvisionRequest publish a request for provisioning
+// Intended to by used by Thing devices to provision with a hub
+func (client *MqttHubClient) PublishProvisionRequest(thingID string, csrPEM []byte) error {
+	topic := strings.ReplaceAll(api.TopicProvisionRequest, "{id}", thingID)
+	message, _ := json.Marshal(csrPEM)
+	err := client.mqttClient.Publish(topic, message)
+	return err
+}
+
+// PublishProvisionResponse publish a response to a provisioning request
+// Intended to by used by plugins that handle provisioning
+func (client *MqttHubClient) PublishProvisionResponse(thingID string, response []byte) error {
+	topic := strings.ReplaceAll(api.TopicProvisionResponse, "{id}", thingID)
+	message, _ := json.Marshal(response)
+	err := client.mqttClient.Publish(topic, message)
+	return err
+}
+
 // Subscribe subscribes to messages from Things
 func (client *MqttHubClient) Subscribe(
 	thingID string,
@@ -108,6 +160,7 @@ func (client *MqttHubClient) Subscribe(
 		sender := ""
 		parts := strings.Split(topic, "/")
 		if len(parts) > 2 {
+			// Topic format is things/thingID/messageType
 			tid := parts[1] // thing ID
 			msgType := parts[2]
 			subscribedHandler(tid, msgType, payload, sender)
@@ -182,6 +235,7 @@ func (client *MqttHubClient) SubscribeToEvents(
 // SubscribePropertyValues receives updates to Thing property values from the WoST Hub
 func (client *MqttHubClient) SubscribeToPropertyValues(
 	thingID string, handler func(thingID string, values map[string]interface{}, senderID string)) {
+
 	topic := strings.ReplaceAll(api.TopicThingPropertyValues, "{id}", thingID)
 
 	// local copy of arguments
@@ -194,6 +248,35 @@ func (client *MqttHubClient) SubscribeToPropertyValues(
 		err := json.Unmarshal(message, &values)
 		if err == nil {
 			subscribedHandler(subscribedThingID, values, sender)
+		}
+	})
+}
+
+// SubscribeToProvisionRequest receives requests for provisioning
+// Intended to by used by plugins that handle provisioning
+func (client *MqttHubClient) SubscribeToProvisionRequest(
+	handler func(thingID string, csrPEM []byte, sender string)) {
+
+	topic := strings.ReplaceAll(api.TopicProvisionResponse, "{id}", "+")
+
+	// local copy of arguments
+	subscribedHandler := handler
+	client.mqttClient.Subscribe(topic, func(address string, message []byte) {
+		// FIXME: determine sender and format for property values message
+		sender := ""
+		// FIXME: don't depend on topic format
+		topicParts := strings.Split(topic, "/")
+		if len(topicParts) < 2 {
+			logrus.Infof("ProvisionRequest: Topic %s invalid", topic)
+			return
+		}
+		thingID := topicParts[1]
+		var csrPEM []byte
+		err := json.Unmarshal(message, &csrPEM)
+		if err != nil {
+			logrus.Infof("ProvisionRequest: topic %s, csrPEM unmarshal error: %s", topic, err)
+		} else {
+			subscribedHandler(thingID, csrPEM, sender)
 		}
 	})
 }
@@ -227,6 +310,29 @@ func (client *MqttHubClient) SubscribeToTD(
 	})
 }
 
+// SubscribeProvisioning subscribes to receive provisioning requests
+// func (client *MqttHubClient) SubscribeProvisioning(
+// 	handler func(thingID string, csrPEM []byte, senderID string)) {
+
+// 	topic := strings.ReplaceAll(api.TopicProvisionRequest, "{id}", "+")
+// 	// local copy of arguments
+// 	subscribedHandler := handler
+// 	client.mqttClient.Subscribe(topic, func(address string, message []byte) {
+// 		// FIXME: determine sender
+// 		sender := ""
+// 		addressParts := strings.Split(address, "/")
+// 		rxThingID := addressParts[1]
+// 		request := make(map[string]interface{})
+// 		err := json.Unmarshal(message, &request)
+// 		if err != nil {
+// 			logrus.Errorf("Received message on topic '%s' but unmarshal failed: %s", topic, err)
+// 		} else {
+// 			// TODO decode the content
+// 			subscribedHandler(rxThingID, message, sender)
+// 		}
+// 	})
+// }
+
 // Unsubscribe removes thing subscription
 func (client *MqttHubClient) Unsubscribe(thingID string) {
 	if thingID == "" {
@@ -243,7 +349,7 @@ func (client *MqttHubClient) Unsubscribe(thingID string) {
 //   caCertFile containing the broker CA certificate for TLS connections
 //   userName of user that is connecting, or thingID of device
 //   password credentials with secret to verify the identity, eg password or Shared Key
-func NewMqttHubClient(hostPort string, caCertFile string, userName string, password string) api.IHubClient {
+func NewMqttHubClient(hostPort string, caCertFile string, userName string, password string) *MqttHubClient {
 
 	client := &MqttHubClient{
 		timeoutSec: 3,
@@ -260,7 +366,7 @@ func NewMqttHubClient(hostPort string, caCertFile string, userName string, passw
 //  clientCertFile for client authentication
 //  clientKeyFile for client authentication
 func NewMqttHubPluginClient(pluginID string, hostPort string, caCertFile string,
-	clientCertFile string, clientKeyFile string) api.IHubClient {
+	clientCertFile string, clientKeyFile string) *MqttHubClient {
 
 	client := &MqttHubClient{
 		timeoutSec:     3,

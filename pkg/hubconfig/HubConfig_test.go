@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wostzone/hubapi/pkg/hubconfig"
+	"github.com/wostzone/hubapi-go/pkg/hubconfig"
 )
 
 type ConfigType1 struct {

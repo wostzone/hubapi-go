@@ -1,3 +1,4 @@
+// Package testenv for creating mosquitto testing environment
 package testenv
 
 import (
@@ -11,7 +12,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/wostzone/hubapi/pkg/certsetup"
+	"github.com/wostzone/hubapi-go/pkg/certsetup"
 )
 
 const mosquittoConfigFile = "wost-mosquitto-test.conf"
@@ -107,7 +108,7 @@ func Setup(homeFolder string, mqttPort int) (mqCmd *exec.Cmd) {
 	certsFolder := path.Join(homeFolder, "certs")
 	// configFolder := path.Join(homeFolder, "config")
 
-	certsetup.CreateCertificates("localhost", certsFolder)
+	certsetup.CreateCertificateBundle("localhost", certsFolder)
 
 	logrus.Infof("--- Starting mosquitto broker ---")
 	// mqCmd = mosquitto.Launch(mosqConfigPath)
