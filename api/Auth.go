@@ -3,34 +3,58 @@
 // These definitions are intended for use by protocol bindings that implement authorization for their protocol
 package api
 
-// Client roles for authorization. The client's role is stored in the certificate OU field.
-// A client can have multiple roles.
-// See also certsetup.CreateClientCert(clientId, role, ...)
+// Group roles set permissions for accessing Things that are members of the same group
 const (
-	// RoleNone indicates that the client has no particular role. It can not do anything until
+	// GroupRoleNone indicates that the client has no particular role. It can not do anything until
 	// the role is upgraded to viewer or better.
-	RoleNone = "none"
+	// Subscribe permissions: none
+	// Publish permissions: none
+	GroupRoleNone = "none"
 
-	// RoleAdmin lets a user approve thing provisioning (postOOB), add and remove users
-	// administrators are not users and do not control Things.
-	RoleAdmin = "admin"
+	// GroupRoleViewer lets a client subscribe to Thing TD and Thing Events
+	// Subscribe permissions: TD, Events
+	// Publish permissions: none
+	GroupRoleViewer = "viewer"
 
-	// RoleManager lets a client subscribe to Thing TD, events, publish actions and update configuration
-	RoleManager = "manager"
+	// GroupRoleUser lets a client subscribe to Thing TD, events and publish actions
+	// Subscribe permissions: TD, Events
+	// Publish permissions: Actions
+	GroupRoleEditor = "editor"
 
-	// RolePlugin marks a client as a plugin. Plugins have full permission to all topics
-	RolePlugin = "plugin"
+	// GroupRoleManager lets a client subscribe to Thing TD, events, publish actions and update configuration
+	// Subscribe permissions: TD, Events
+	// Publish permissions: Actions, Configuration
+	GroupRoleManager = "manager"
 
-	// RoleThing indicates the client is a IoT provider that can publish and subscribe
-	// to Thing topics. A Thing Client can publish multiple Things.
-	// Things should only publish events for Things it published the TD for.
-	RoleThing = "thing"
+	// GroupRoleThing indicates the client is a IoT device that can publish and subscribe
+	// to Thing topics.
+	// Things should only publish events and updates for Things it published the TD for.
+	// Publish permissions: TD, Events
+	// Subscribe permissions: Actions, Configuration
+	GroupRoleThing = "thing"
+)
 
-	// RoleUser lets a client subscribe to Thing TD, events and publish actions
-	RoleUser = "user"
+// Organization Unit for client authorization are stored in the client certificate OU field
+const (
+	// Default OU with no API access permissions
+	OUNone = ""
 
-	// RoleViewer lets a client subscribe to Thing TD and events
-	RoleViewer = "viewer"
+	// OUClient lets a client connect to the message bus
+	OUClient = "client"
+
+	// OUIoTDevice indicates the client is a IoT device that can connect to the message bus
+	// perform discovery and request provisioning.
+	// Provision API permissions: GetDirectory, ProvisionRequest, GetStatus
+	OUIoTDevice = "iotdevice"
+
+	//OUAdmin lets a client approve thing provisioning (postOOB), add and remove users
+	// Provision API permissions: GetDirectory, ProvisionRequest, GetStatus, PostOOB
+	OUAdmin = "admin"
+
+	// OUPlugin marks a client as a plugin.
+	// By default, plugins have full permission to all APIs
+	// Provision API permissions: Any
+	OUPlugin = "plugin"
 )
 
 // AuthGroup defines a group with Thing and Users

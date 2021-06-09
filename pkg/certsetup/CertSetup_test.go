@@ -42,7 +42,7 @@ func TestTLSCertificateGeneration(t *testing.T) {
 	clientKey := signing.CreateECDSAKeys()
 	clientKeyPEM := signing.PrivateKeyToPem(clientKey)
 	clientPubPEM := signing.PublicKeyToPem(&clientKey.PublicKey)
-	clientCertPEM, err := certsetup.CreateClientCert(hostname, api.RoleNone, clientPubPEM, caCertPEM, caKeyPEM)
+	clientCertPEM, err := certsetup.CreateClientCert(hostname, api.OUClient, clientPubPEM, caCertPEM, caKeyPEM)
 	require.NoErrorf(t, err, "Creating certificates failed:")
 	require.NotNilf(t, clientCertPEM, "Failed creating client certificate")
 	require.NotNilf(t, clientKeyPEM, "Failed creating client key")
@@ -93,7 +93,7 @@ func TestBadCert(t *testing.T) {
 	clientKey := signing.CreateECDSAKeys()
 	clientKeyPEM := signing.PrivateKeyToPem(clientKey)
 	clientPubPEM := signing.PublicKeyToPem(&clientKey.PublicKey)
-	clientCertPEM, err := certsetup.CreateClientCert(hostname, api.RoleNone, clientPubPEM, caCertPEM, caKeyPEM)
+	clientCertPEM, err := certsetup.CreateClientCert(hostname, api.OUClient, clientPubPEM, caCertPEM, caKeyPEM)
 
 	assert.NotNilf(t, clientKeyPEM, "Missing client key")
 	assert.Errorf(t, err, "Creating certificates should fail")

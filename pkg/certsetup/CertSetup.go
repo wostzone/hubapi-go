@@ -41,7 +41,7 @@ const (
 
 // CreateCertificateBundle is a convenience function to create the Hub CA, server and (plugin) client
 // certificates into the given folder. Intended for testing.
-// This only creates the missing certificates
+// This only creates missing certificates.
 func CreateCertificateBundle(hostname string, certFolder string) error {
 	var err error
 	// create the CA if needed
@@ -85,7 +85,7 @@ func CreateCertificateBundle(hostname string, certFolder string) error {
 		clientKey := signing.CreateECDSAKeys()
 		clientKeyPEM = signing.PrivateKeyToPem(clientKey)
 		clientPubKeyPEM := signing.PublicKeyToPem(&clientKey.PublicKey)
-		clientCertPEM, err = CreateClientCert(hostname, api.RolePlugin, clientPubKeyPEM, caCertPEM, caKeyPEM)
+		clientCertPEM, err = CreateClientCert(hostname, api.OUPlugin, clientPubKeyPEM, caCertPEM, caKeyPEM)
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle client failed: %s", err)
 		}
@@ -101,12 +101,12 @@ func CreateCertificateBundle(hostname string, certFolder string) error {
 //
 // This generates a certificate using the client's public key in PEM format
 //  clientID used as the CommonName
-//  role of the client, stored as the OrganizationalUnit
+//  ou of the client, stored as the OrganizationalUnit
 //  clientPubKeyPEM with the client's public key
 //  caCertPEM CA's certificate in PEM format.
 //  caKeyPEM CA's ECDSA key used in signing.
 // Returns the signed certificate or error
-func CreateClientCert(clientID string, role string, clientPubKeyPEM, caCertPEM []byte, caKeyPEM []byte) (certPEM []byte, err error) {
+func CreateClientCert(clientID string, ou string, clientPubKeyPEM, caCertPEM []byte, caKeyPEM []byte) (certPEM []byte, err error) {
 	var certDuration = DefaultCertDuration
 
 	caPrivKey, err := signing.PrivateKeyFromPem(string(caKeyPEM))
@@ -123,12 +123,10 @@ func CreateClientCert(clientID string, role string, clientPubKeyPEM, caCertPEM [
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(2021),
 		Subject: pkix.Name{
-			Organization: []string{"WoST"},
-			// Country:            []string{"CA"},
-			// Province:           []string{"BC"},
+			Organization:       []string{"WoST"},
 			Locality:           []string{"WoST Zone"},
 			CommonName:         clientID,
-			OrganizationalUnit: []string{role},
+			OrganizationalUnit: []string{ou},
 			Names:              make([]pkix.AttributeTypeAndValue, 0),
 		},
 		NotBefore: time.Now(),
