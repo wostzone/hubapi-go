@@ -1,4 +1,4 @@
-package mqttclient_test
+package hubclient_test
 
 import (
 	"encoding/json"
@@ -7,9 +7,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"github.com/wostzone/wostlib-go/internal/mqttclient"
+	"github.com/wostzone/wostlib-go/pkg/hubclient"
 	"github.com/wostzone/wostlib-go/pkg/td"
-	"github.com/wostzone/wostlib-go/wostapi"
+	"github.com/wostzone/wostlib-go/pkg/vocab"
 )
 
 const zone = "test"
@@ -23,14 +23,14 @@ const mqttTestThingConnection = "localhost:33101"
 // 	logrus.Infof("--- TestPublishCustom ---")
 // 	thingID := "urn:TestPublishCustom"
 
-// 	// thingClient := mqttclient.NewMqttHubClient("localhost:8883", "/home/henk/bin/wost/certs/ca.crt", "", "")
-// 	thingClient := mqttclient.NewMqttHubPluginClient("henksplugin",
+// 	// thingClient := hubclient.NewMqttHubClient("localhost:8883", "/home/henk/bin/wost/certs/ca.crt", "", "")
+// 	thingClient := hubclient.NewMqttHubPluginClient("henksplugin",
 // 		"localhost:9883", "/home/henk/bin/wost/certs/ca.crt",
 // 		"/home/henk/bin/wost/certs/client.crt", "/home/henk/bin/wost/certs/client.key")
 
 // 	err := thingClient.Start()
 // 	assert.NoError(t, err)
-// 	thingTD := td.CreateTD(thingID, wostapi.DeviceTypeService)
+// 	thingTD := td.CreateTD(thingID, vocab.DeviceTypeService)
 // 	thingClient.PublishTD(thingID, thingTD)
 // 	time.Sleep(time.Second)
 // 	thingClient.Stop()
@@ -44,8 +44,8 @@ func TestPublishAction(t *testing.T) {
 	var rxParams map[string]interface{}
 	actionName := "action1"
 	actionInput := map[string]interface{}{"input1": "inputValue"}
-	consumerClient := mqttclient.NewMqttHubClient(mqttTestConsumerConnection, mqttTestCaCertFile, "", "")
-	thingClient := mqttclient.NewMqttHubClient(mqttTestThingConnection, mqttTestCaCertFile, "", "")
+	consumerClient := hubclient.NewMqttHubClient(mqttTestConsumerConnection, mqttTestCaCertFile, "", "")
+	thingClient := hubclient.NewMqttHubClient(mqttTestThingConnection, mqttTestCaCertFile, "", "")
 	thingClient.SubscribeToActions(thingID, func(thingID string, name string, params map[string]interface{}, sender string) {
 		logrus.Infof("TestPublishAction: Received action of Thing %s from client %s", thingID, sender)
 		rxName = name
@@ -81,8 +81,8 @@ func TestPublishConfig(t *testing.T) {
 	var rxID string
 
 	config1 := map[string]interface{}{"prop1": "value1"}
-	consumerClient := mqttclient.NewMqttHubClient(mqttTestConsumerConnection, mqttTestCaCertFile, "", credentials)
-	thingClient := mqttclient.NewMqttHubClient(mqttTestThingConnection, mqttTestCaCertFile, "", credentials)
+	consumerClient := hubclient.NewMqttHubClient(mqttTestConsumerConnection, mqttTestCaCertFile, "", credentials)
+	thingClient := hubclient.NewMqttHubClient(mqttTestThingConnection, mqttTestCaCertFile, "", credentials)
 	thingClient.SubscribeToConfig(thingID, func(thingID string, config map[string]interface{}, sender string) {
 		logrus.Infof("TestPublishConfig: Received config of Thing %s from client %s", thingID, sender)
 		rx = config
@@ -114,8 +114,8 @@ func TestPublishEvent(t *testing.T) {
 	event1 := map[string]interface{}{"eventName": "eventValue"}
 	var rx map[string]interface{}
 
-	consumerClient := mqttclient.NewMqttHubClient(mqttTestConsumerConnection, mqttTestCaCertFile, "", credentials)
-	thingClient := mqttclient.NewMqttHubClient(mqttTestThingConnection, mqttTestCaCertFile, "", credentials)
+	consumerClient := hubclient.NewMqttHubClient(mqttTestConsumerConnection, mqttTestCaCertFile, "", credentials)
+	thingClient := hubclient.NewMqttHubClient(mqttTestThingConnection, mqttTestCaCertFile, "", credentials)
 
 	err := thingClient.Start()
 	assert.NoError(t, err)
@@ -146,10 +146,10 @@ func TestPublishPropertyValues(t *testing.T) {
 	propValues := map[string]interface{}{"propname": "value"}
 	var rx map[string]interface{}
 
-	thingClient := mqttclient.NewMqttHubClient(mqttTestConsumerConnection, mqttTestCaCertFile, "", credentials)
+	thingClient := hubclient.NewMqttHubClient(mqttTestConsumerConnection, mqttTestCaCertFile, "", credentials)
 	err := thingClient.Start()
 	assert.NoError(t, err)
-	consumerClient := mqttclient.NewMqttHubClient(mqttTestThingConnection, mqttTestCaCertFile, "", credentials)
+	consumerClient := hubclient.NewMqttHubClient(mqttTestThingConnection, mqttTestCaCertFile, "", credentials)
 	err = consumerClient.Start()
 	assert.NoError(t, err)
 	consumerClient.SubscribeToPropertyValues(thingID, func(thingID string, values map[string]interface{}, sender string) {
@@ -171,17 +171,17 @@ func TestPublishTD(t *testing.T) {
 	logrus.Infof("--- TestPublishTD ---")
 	credentials := ""
 	deviceID := "thing1"
-	thingID := td.CreateThingID(zone, deviceID, wostapi.DeviceTypeSensor)
-	td1 := td.CreateTD(thingID, wostapi.DeviceTypeSensor)
+	thingID := td.CreateThingID(zone, deviceID, vocab.DeviceTypeSensor)
+	td1 := td.CreateTD(thingID, vocab.DeviceTypeSensor)
 	var rxTd map[string]interface{}
 
-	thingClient := mqttclient.NewMqttHubClient(mqttTestConsumerConnection, mqttTestCaCertFile, "", credentials)
+	thingClient := hubclient.NewMqttHubClient(mqttTestConsumerConnection, mqttTestCaCertFile, "", credentials)
 	err := thingClient.Start()
 	assert.NoError(t, err)
-	consumerClient := mqttclient.NewMqttHubClient(mqttTestThingConnection, mqttTestCaCertFile, "", credentials)
+	consumerClient := hubclient.NewMqttHubClient(mqttTestThingConnection, mqttTestCaCertFile, "", credentials)
 	err = consumerClient.Start()
 	assert.NoError(t, err)
-	consumerClient.SubscribeToTD(thingID, func(thingID string, thing wostapi.ThingTD, sender string) {
+	consumerClient.SubscribeToTD(thingID, func(thingID string, thing map[string]interface{}, sender string) {
 		logrus.Infof("TestPublishTD: Received TD of Thing %s from client %s", thingID, sender)
 		rxTd = thing
 	})
@@ -203,16 +203,16 @@ func TestSubscribeAll(t *testing.T) {
 	logrus.Infof("--- TestSubscribeAll ---")
 	credentials := ""
 	deviceID := "thing1"
-	thingID := td.CreateThingID(zone, deviceID, wostapi.DeviceTypeSensor)
-	td1 := td.CreateTD(thingID, wostapi.DeviceTypeSensor)
+	thingID := td.CreateThingID(zone, deviceID, vocab.DeviceTypeSensor)
+	td1 := td.CreateTD(thingID, vocab.DeviceTypeSensor)
 	txTd, _ := json.Marshal(td1)
 	var rxTd []byte
 	var rxThing string
 
-	pluginClient := mqttclient.NewMqttHubClient(mqttTestConsumerConnection, mqttTestCaCertFile, "", credentials)
+	pluginClient := hubclient.NewMqttHubClient(mqttTestConsumerConnection, mqttTestCaCertFile, "", credentials)
 	err := pluginClient.Start()
 	assert.NoError(t, err)
-	thingClient := mqttclient.NewMqttHubClient(mqttTestThingConnection, mqttTestCaCertFile, "", credentials)
+	thingClient := hubclient.NewMqttHubClient(mqttTestThingConnection, mqttTestCaCertFile, "", credentials)
 	err = thingClient.Start()
 	assert.NoError(t, err)
 	pluginClient.Subscribe("", func(thingID string, msgType string, raw []byte, sender string) {
@@ -245,10 +245,10 @@ func TestSubscribeAll(t *testing.T) {
 // func TestRequestProvisioning(t *testing.T) {
 // 	pluginID := "plugin1"
 // 	deviceID := "thing1"
-// 	thingID := td.CreateThingID(zone, deviceID, wostapi.DeviceTypeSensor)
+// 	thingID := td.CreateThingID(zone, deviceID, vocab.DeviceTypeSensor)
 
 // 	// setup a provisioning server
-// 	pluginClient := mqttclient.NewMqttHubPluginClient(
+// 	pluginClient := hubclient.NewMqttHubPluginClient(
 // 		pluginID, mqttTestConsumerConnection, mqttTestCaCertFile, mqttTestClientCertFile, mqttTestClientKeyFile)
 // 	err := pluginClient.Start()
 // 	require.NoError(t, err)
@@ -267,7 +267,7 @@ func TestSubscribeAll(t *testing.T) {
 // 	})
 
 // 	// create a provisioning request for a thing
-// 	thingClient := mqttclient.NewMqttHubClient(mqttTestThingConnection, mqttTestCaCertFile, "", "")
+// 	thingClient := hubclient.NewMqttHubClient(mqttTestThingConnection, mqttTestCaCertFile, "", "")
 // 	err = thingClient.Start()
 // 	assert.NoError(t, err)
 

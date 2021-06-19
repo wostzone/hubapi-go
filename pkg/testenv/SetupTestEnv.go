@@ -111,7 +111,7 @@ func Setup(homeFolder string, mqttPort int) (mqCmd *exec.Cmd) {
 	certsetup.CreateCertificateBundle("localhost", certsFolder)
 
 	logrus.Infof("--- Starting mosquitto broker ---")
-	// mqCmd = mosquitto.Launch(mosqConfigPath)
+	// mqCmd = Launch(mosqConfigPath)
 
 	// mosquitto must be in the path to execute
 	mosqConf := CreateMosquittoConf(mqttPort, homeFolder)

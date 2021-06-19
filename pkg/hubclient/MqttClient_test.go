@@ -1,4 +1,4 @@
-package mqttclient_test
+package hubclient_test
 
 import (
 	"os"
@@ -10,19 +10,18 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wostzone/wostlib-go/internal/mqttclient"
 	"github.com/wostzone/wostlib-go/pkg/certsetup"
-	"github.com/wostzone/wostlib-go/pkg/mosquitto"
-	"github.com/wostzone/wostlib-go/wostapi"
+	"github.com/wostzone/wostlib-go/pkg/hubclient"
+	"github.com/wostzone/wostlib-go/pkg/testenv"
 )
 
 // Use test/mosquitto-test.conf
 const mqttTestPluginConnection = "localhost:33100"
 
-const mqttTestCaCertFile = "certs/" + wostapi.CaCertFile
-const mqttTestCaKeyFile = "certs/" + wostapi.CaKeyFile
-const mqttTestClientCertFile = "certs/" + wostapi.ClientCertFile
-const mqttTestClientKeyFile = "certs/" + wostapi.ClientKeyFile
+var mqttTestCaCertFile string
+var mqttTestCaKeyFile string
+var mqttTestClientCertFile string
+var mqttTestClientKeyFile string
 
 const TEST_TOPIC = "test"
 
@@ -38,11 +37,17 @@ func TestMain(m *testing.M) {
 	home := path.Join(cwd, "../../test")
 	os.Chdir(home)
 	certsFolder := path.Join(home, "certs")
+
+	mqttTestCaCertFile = path.Join(certsFolder, certsetup.CaCertFile)
+	mqttTestCaKeyFile = path.Join(certsFolder, certsetup.CaKeyFile)
+	mqttTestClientCertFile = path.Join(certsFolder, certsetup.ClientCertFile)
+	mqttTestClientKeyFile = path.Join(certsFolder, certsetup.ClientKeyFile)
+
 	configFolder := path.Join(home, "config")
 	certsetup.CreateCertificateBundle("localhost", certsFolder)
 	mosqConfigPath := path.Join(configFolder, mosquittoConfigFile)
 
-	mosquittoCmd, err := mosquitto.Launch(mosqConfigPath)
+	mosquittoCmd, err := testenv.Launch(mosqConfigPath)
 	if err != nil {
 		logrus.Fatalf("Unable to setup mosquitto: %s", err)
 	}
@@ -56,7 +61,7 @@ func TestMain(m *testing.M) {
 func TestMqttConnect(t *testing.T) {
 	logrus.Infof("--- TestMqttConnect ---")
 
-	client := mqttclient.NewMqttClient(mqttTestPluginConnection, mqttTestCaCertFile)
+	client := hubclient.NewMqttClient(mqttTestPluginConnection, mqttTestCaCertFile)
 	client.SetTimeout(10)
 	err := client.ConnectWithClientCert(testPluginID, mqttTestClientCertFile, mqttTestClientKeyFile)
 	assert.NoError(t, err)
@@ -70,7 +75,7 @@ func TestMqttNoConnect(t *testing.T) {
 	logrus.Infof("--- TestMqttNoConnect ---")
 
 	invalidHost := "nohost:1111"
-	client := mqttclient.NewMqttClient(invalidHost, mqttTestCaCertFile)
+	client := hubclient.NewMqttClient(invalidHost, mqttTestCaCertFile)
 	client.SetTimeout(5)
 	require.NotNil(t, client)
 	err := client.ConnectWithClientCert(testPluginID, mqttTestClientCertFile, mqttTestClientKeyFile)
@@ -88,7 +93,7 @@ func TestMQTTPubSub(t *testing.T) {
 	const timeout = 10
 	// certFolder := ""
 
-	client := mqttclient.NewMqttClient(mqttTestPluginConnection, mqttTestCaCertFile)
+	client := hubclient.NewMqttClient(mqttTestPluginConnection, mqttTestCaCertFile)
 	client.SetTimeout(5)
 	err := client.ConnectWithClientCert(testPluginID, mqttTestClientCertFile, mqttTestClientKeyFile)
 	require.NoError(t, err)
@@ -116,7 +121,7 @@ func TestMQTTPubSub(t *testing.T) {
 func TestMQTTMultipleSubscriptions(t *testing.T) {
 	logrus.Infof("--- TestMQTTMultipleSubscriptions ---")
 
-	client := mqttclient.NewMqttClient(mqttTestPluginConnection, mqttTestCaCertFile)
+	client := hubclient.NewMqttClient(mqttTestPluginConnection, mqttTestCaCertFile)
 	var rx1 string
 	var rx2 string
 	rxMutex := sync.Mutex{}
@@ -195,7 +200,7 @@ func TestMQTTMultipleSubscriptions(t *testing.T) {
 func TestMQTTBadUnsubscribe(t *testing.T) {
 	logrus.Infof("--- TestMQTTBadUnsubscribe ---")
 
-	client := mqttclient.NewMqttClient(mqttTestPluginConnection, mqttTestCaCertFile)
+	client := hubclient.NewMqttClient(mqttTestPluginConnection, mqttTestCaCertFile)
 	client.SetTimeout(10)
 	err := client.ConnectWithClientCert(testPluginID, mqttTestClientCertFile, mqttTestClientKeyFile)
 	require.NoError(t, err)
@@ -208,7 +213,7 @@ func TestMQTTPubNoConnect(t *testing.T) {
 	logrus.Infof("--- TestMQTTPubNoConnect ---")
 
 	invalidHost := "localhost:1111"
-	client := mqttclient.NewMqttClient(invalidHost, mqttTestCaCertFile)
+	client := hubclient.NewMqttClient(invalidHost, mqttTestCaCertFile)
 	var msg1 = "Hello world 1"
 
 	err := client.Publish(TEST_TOPIC, []byte(msg1))
@@ -220,7 +225,7 @@ func TestMQTTPubNoConnect(t *testing.T) {
 func TestMQTTSubBeforeConnect(t *testing.T) {
 	logrus.Infof("--- TestMQTTSubBeforeConnect ---")
 
-	client := mqttclient.NewMqttClient(mqttTestPluginConnection, mqttTestCaCertFile)
+	client := hubclient.NewMqttClient(mqttTestPluginConnection, mqttTestCaCertFile)
 	const timeout = 10
 	const msg = "hello 1"
 	var rx string
@@ -256,7 +261,7 @@ func TestSubscribeWildcard(t *testing.T) {
 	const testTopic1 = "test/1/5"
 	const wildcardTopic = "test/+/#"
 
-	client := mqttclient.NewMqttClient(mqttTestPluginConnection, mqttTestCaCertFile)
+	client := hubclient.NewMqttClient(mqttTestPluginConnection, mqttTestCaCertFile)
 	const timeout = 10
 	const msg = "hello 1"
 	var rx string

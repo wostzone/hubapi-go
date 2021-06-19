@@ -1,5 +1,5 @@
-// Package mosquitto with launching of the mosquitto broker
-package mosquitto
+// Package testenv with launching of the mosquitto broker
+package testenv
 
 import (
 	"os"

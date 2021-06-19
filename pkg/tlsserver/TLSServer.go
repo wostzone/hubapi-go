@@ -14,7 +14,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
-	"github.com/wostzone/wostlib-go/wostapi"
+	"github.com/wostzone/wostlib-go/pkg/certsetup"
 )
 
 // Simple TLS Server
@@ -48,14 +48,14 @@ func (srv *TLSServer) Start() error {
 	logrus.Infof("TLSServer.Start: Starting TLS server on address: %s", srv.listenAddress)
 	srv.router = mux.NewRouter()
 
-	caCertPath := path.Join(srv.certFolder, wostapi.CaCertFile)
+	caCertPath := path.Join(srv.certFolder, certsetup.CaCertFile)
 	_, err := os.Stat(caCertPath)
 	if os.IsNotExist(err) {
 		logrus.Errorf("TLSServer.Start: Missing CA certificate %s", caCertPath)
 		return err
 	}
-	serverCertPath := path.Join(srv.certFolder, wostapi.ServerCertFile)
-	serverKeyPath := path.Join(srv.certFolder, wostapi.ServerKeyFile)
+	serverCertPath := path.Join(srv.certFolder, certsetup.ServerCertFile)
+	serverKeyPath := path.Join(srv.certFolder, certsetup.ServerKeyFile)
 	serverCertPEM, err := ioutil.ReadFile(serverCertPath)
 	serverKeyPEM, err2 := ioutil.ReadFile(serverKeyPath)
 	serverCert, err3 := tls.X509KeyPair(serverCertPEM, serverKeyPEM)

@@ -1,6 +1,6 @@
-// Package wostapi with iotschema vocabulary for sensor, actuator and unitname names
+// Package vocab with iotschema vocabulary for sensor, actuator and unitname names
 // TODO: base this of a universally accepted ontology. Closest is iotschema.org but that seems incomplete
-package wostapi
+package vocab
 
 // DataType of configuration, input and ouput values.
 // type DataType string

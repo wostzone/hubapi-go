@@ -5,14 +5,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/wostzone/wostlib-go/pkg/td"
-	"github.com/wostzone/wostlib-go/wostapi"
+	"github.com/wostzone/wostlib-go/pkg/vocab"
 )
 
 const zone = "test"
 
 func TestCreateTD(t *testing.T) {
 	deviceID := zone + "Thing1"
-	thing := td.CreateTD(deviceID, wostapi.DeviceTypeSensor)
+	thing := td.CreateTD(deviceID, vocab.DeviceTypeSensor)
 	assert.NotNil(t, thing)
 
 	// Set version
@@ -20,7 +20,7 @@ func TestCreateTD(t *testing.T) {
 	td.SetThingVersion(thing, versions)
 
 	// Define TD property
-	prop := td.CreateProperty("Prop1", "First property", wostapi.PropertyTypeSensor)
+	prop := td.CreateProperty("Prop1", "First property", vocab.PropertyTypeSensor)
 	enumValues := make([]string, 0) //{"value1", "value2"}
 	td.SetPropertyEnum(prop, enumValues)
 	td.SetPropertyUnit(prop, "C")

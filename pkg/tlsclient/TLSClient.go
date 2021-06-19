@@ -1,4 +1,4 @@
-// Package client with a simple TLS client helper for mutual authentication
+// Package tlsclient with a simple TLS client helper for mutual authentication
 package tlsclient
 
 import (
@@ -17,7 +17,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/wostzone/wostlib-go/pkg/certsetup"
-	"github.com/wostzone/wostlib-go/wostapi"
 )
 
 // Simple TLS Client
@@ -137,21 +136,21 @@ func (cl *TLSClient) Start() (err error) {
 	var checkServerCert = false
 
 	// Use CA certificate for server authentication if it exists
-	caCertPEM, err := certsetup.LoadPEM(cl.certFolder, wostapi.CaCertFile)
+	caCertPEM, err := certsetup.LoadPEM(cl.certFolder, certsetup.CaCertFile)
 	caCertPool := x509.NewCertPool()
 	if err == nil {
-		logrus.Infof("TLSClient.Start: Using CA certificate in '%s' for server verification", wostapi.CaCertFile)
+		logrus.Infof("TLSClient.Start: Using CA certificate in '%s' for server verification", certsetup.CaCertFile)
 		caCertPool.AppendCertsFromPEM([]byte(caCertPEM))
 		checkServerCert = true
 	} else {
-		logrus.Infof("TLSClient.Start, No CA certificate at '%s/%s'. InsecureSkipVerify used", cl.certFolder, wostapi.CaCertFile)
+		logrus.Infof("TLSClient.Start, No CA certificate at '%s/%s'. InsecureSkipVerify used", cl.certFolder, certsetup.CaCertFile)
 	}
 
 	// Use client certificate for mutual authentication with the server
-	clientCertPEM, _ := certsetup.LoadPEM(cl.certFolder, wostapi.ClientCertFile)
-	clientKeyPEM, _ := certsetup.LoadPEM(cl.certFolder, wostapi.ClientKeyFile)
+	clientCertPEM, _ := certsetup.LoadPEM(cl.certFolder, certsetup.ClientCertFile)
+	clientKeyPEM, _ := certsetup.LoadPEM(cl.certFolder, certsetup.ClientKeyFile)
 	if clientCertPEM != "" && clientKeyPEM != "" {
-		logrus.Infof("TLSClient.Start: Using client certificate from %s for mutual auth", wostapi.ClientCertFile)
+		logrus.Infof("TLSClient.Start: Using client certificate from %s for mutual auth", certsetup.ClientCertFile)
 		clientCert, err := tls.X509KeyPair([]byte(clientCertPEM), []byte(clientKeyPEM))
 		if err != nil {
 			logrus.Error("TLSClient.Start: Invalid client certificate or key: ", err)
@@ -159,7 +158,7 @@ func (cl *TLSClient) Start() (err error) {
 		}
 		clientCertList = append(clientCertList, clientCert)
 	} else {
-		logrus.Infof("TLSClient.Start, No client key/certificate in '%s/%s'. Mutual auth disabled.", cl.certFolder, wostapi.ClientKeyFile)
+		logrus.Infof("TLSClient.Start, No client key/certificate in '%s/%s'. Mutual auth disabled.", cl.certFolder, certsetup.ClientKeyFile)
 	}
 	tlsConfig := &tls.Config{
 		RootCAs:            caCertPool,

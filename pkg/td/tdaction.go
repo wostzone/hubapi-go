@@ -1,7 +1,7 @@
 // Package td with TD action creation
 package td
 
-import "github.com/wostzone/wostlib-go/wostapi"
+import "github.com/wostzone/wostlib-go/pkg/vocab"
 
 // CreateTDAction creates a new TD action description
 //  title for presentation
@@ -9,8 +9,8 @@ import "github.com/wostzone/wostlib-go/wostapi"
 // Returns an action object
 func CreateTDAction(title string, description string) map[string]interface{} {
 	action := make(map[string]interface{}, 0)
-	action[wostapi.WoTTitle] = title
-	action[wostapi.WoTDescription] = description
+	action[vocab.WoTTitle] = title
+	action[vocab.WoTDescription] = description
 
 	return action
 }
@@ -37,10 +37,10 @@ func SetTDActionInput(action map[string]interface{},
 	requiredProperties []string) {
 
 	input := make(map[string]interface{}, 0)
-	input[wostapi.WoTDataType] = inputDataType
-	input[wostapi.WoTProperties] = properties
-	input[wostapi.WoTRequired] = requiredProperties
-	action[wostapi.WoTInput] = input
+	input[vocab.WoTDataType] = inputDataType
+	input[vocab.WoTProperties] = properties
+	input[vocab.WoTRequired] = requiredProperties
+	action[vocab.WoTInput] = input
 }
 
 // SetTDActionForms sets the forms section of the action, if needed
@@ -49,7 +49,7 @@ func SetTDActionInput(action map[string]interface{},
 //  action to add form to
 //  forms with list of forms to add. See also CreateForm to create a single form
 func SetTDActionForms(action map[string]interface{}, forms []map[string]interface{}) {
-	action[wostapi.WoTForms] = forms
+	action[vocab.WoTForms] = forms
 }
 
 // SetTDActionOutput sets the output section of the action
@@ -58,6 +58,6 @@ func SetTDActionForms(action map[string]interface{}, forms []map[string]interfac
 //  outputType "object", "string", "number", "int"
 func SetTDActionOutput(action map[string]interface{}, outputType string) {
 	output := make(map[string]interface{}, 0)
-	output[wostapi.WoTDataType] = outputType
-	action[wostapi.WoTOutput] = output
+	output[vocab.WoTDataType] = outputType
+	action[vocab.WoTOutput] = output
 }

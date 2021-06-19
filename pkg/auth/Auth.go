@@ -1,17 +1,7 @@
-// Package wostapi with group based authorization definition
+// Package auth with definitions for group based authorization
 // Group based authorization is managed centrally by the Hub and implemented by protocol bindings
-// These definitions are intended for use by protocol bindings that implement authorization for their protocol
-package wostapi
-
-// Standard client and server key/certificate filenames. All stored in PEM format.
-const (
-	CaCertFile     = "caCert.pem" // CA that signed the server and client certificates
-	CaKeyFile      = "caKey.pem"
-	ServerCertFile = "hubCert.pem"
-	ServerKeyFile  = "hubKey.pem"
-	ClientCertFile = "clientCert.pem"
-	ClientKeyFile  = "clientKey.pem"
-)
+// TODO: use this in a PB
+package auth
 
 // Group roles set permissions for accessing Things that are members of the same group
 const (
@@ -42,29 +32,6 @@ const (
 	// Publish permissions: TD, Events
 	// Subscribe permissions: Actions, Configuration
 	GroupRoleThing = "thing"
-)
-
-// Organization Unit for client authorization are stored in the client certificate OU field
-const (
-	// Default OU with no API access permissions
-	OUNone = ""
-
-	// OUClient lets a client connect to the message bus
-	OUClient = "client"
-
-	// OUIoTDevice indicates the client is a IoT device that can connect to the message bus
-	// perform discovery and request provisioning.
-	// Provision API permissions: GetDirectory, ProvisionRequest, GetStatus
-	OUIoTDevice = "iotdevice"
-
-	//OUAdmin lets a client approve thing provisioning (postOOB), add and remove users
-	// Provision API permissions: GetDirectory, ProvisionRequest, GetStatus, PostOOB
-	OUAdmin = "admin"
-
-	// OUPlugin marks a client as a plugin.
-	// By default, plugins have full permission to all APIs
-	// Provision API permissions: Any
-	OUPlugin = "plugin"
 )
 
 // AuthGroup defines a group with Thing and Users

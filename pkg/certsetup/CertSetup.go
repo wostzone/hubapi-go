@@ -19,7 +19,39 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/wostzone/wostlib-go/pkg/signing"
-	"github.com/wostzone/wostlib-go/wostapi"
+)
+
+// Standard client and server key/certificate filenames. All stored in PEM format.
+const (
+	CaCertFile     = "caCert.pem" // CA that signed the server and client certificates
+	CaKeyFile      = "caKey.pem"
+	ServerCertFile = "hubCert.pem"
+	ServerKeyFile  = "hubKey.pem"
+	ClientCertFile = "clientCert.pem"
+	ClientKeyFile  = "clientKey.pem"
+)
+
+// Organization Unit for client authorization are stored in the client certificate OU field
+const (
+	// Default OU with no API access permissions
+	OUNone = ""
+
+	// OUClient lets a client connect to the message bus
+	OUClient = "client"
+
+	// OUIoTDevice indicates the client is a IoT device that can connect to the message bus
+	// perform discovery and request provisioning.
+	// Provision API permissions: GetDirectory, ProvisionRequest, GetStatus
+	OUIoTDevice = "iotdevice"
+
+	//OUAdmin lets a client approve thing provisioning (postOOB), add and remove users
+	// Provision API permissions: GetDirectory, ProvisionRequest, GetStatus, PostOOB
+	OUAdmin = "admin"
+
+	// OUPlugin marks a client as a plugin.
+	// By default, plugins have full permission to all APIs
+	// Provision API permissions: Any
+	OUPlugin = "plugin"
 )
 
 // const keySize = 2048 // 4096
@@ -35,20 +67,20 @@ const TempCertDurationDays = 1
 func CreateCertificateBundle(hostname string, certFolder string) error {
 	var err error
 	// create the CA if needed
-	caCertPEM, _ := LoadPEM(certFolder, wostapi.CaCertFile)
-	caKeyPEM, _ := LoadPEM(certFolder, wostapi.CaKeyFile)
+	caCertPEM, _ := LoadPEM(certFolder, CaCertFile)
+	caKeyPEM, _ := LoadPEM(certFolder, CaKeyFile)
 	if caCertPEM == "" || caKeyPEM == "" {
 		caCertPEM, caKeyPEM = CreateHubCA()
-		err = SaveKeyToPEM(caKeyPEM, certFolder, wostapi.CaKeyFile)
+		err = SaveKeyToPEM(caKeyPEM, certFolder, CaKeyFile)
 		if err != nil {
 			logrus.Fatalf("CreateCertificates CA failed writing. Unable to continue: %s", err)
 		}
-		err = SaveCertToPEM(caCertPEM, certFolder, wostapi.CaCertFile)
+		err = SaveCertToPEM(caCertPEM, certFolder, CaCertFile)
 	}
 
 	// create the Server cert if needed
-	serverCertPEM, _ := LoadPEM(certFolder, wostapi.ServerCertFile)
-	serverKeyPEM, _ := LoadPEM(certFolder, wostapi.ServerKeyFile)
+	serverCertPEM, _ := LoadPEM(certFolder, ServerCertFile)
+	serverKeyPEM, _ := LoadPEM(certFolder, ServerKeyFile)
 	if serverCertPEM == "" || serverKeyPEM == "" {
 		serverKey := signing.CreateECDSAKeys()
 		serverKeyPEM, _ = signing.PrivateKeyToPEM(serverKey)
@@ -60,12 +92,12 @@ func CreateCertificateBundle(hostname string, certFolder string) error {
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle server failed: %s", err)
 		}
-		SaveKeyToPEM(serverKeyPEM, certFolder, wostapi.ServerKeyFile)
-		SaveCertToPEM(serverCertPEM, certFolder, wostapi.ServerCertFile)
+		SaveKeyToPEM(serverKeyPEM, certFolder, ServerKeyFile)
+		SaveCertToPEM(serverCertPEM, certFolder, ServerCertFile)
 	}
 	// create the Client cert if needed
-	clientCertPEM, _ := LoadPEM(certFolder, wostapi.ClientCertFile)
-	clientKeyPEM, _ := LoadPEM(certFolder, wostapi.ClientKeyFile)
+	clientCertPEM, _ := LoadPEM(certFolder, ClientCertFile)
+	clientKeyPEM, _ := LoadPEM(certFolder, ClientKeyFile)
 	if clientCertPEM == "" || clientKeyPEM == "" {
 
 		clientKey := signing.CreateECDSAKeys()
@@ -74,12 +106,12 @@ func CreateCertificateBundle(hostname string, certFolder string) error {
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle client failed: %s", err)
 		}
-		clientCertPEM, err = CreateClientCert(hostname, wostapi.OUPlugin, clientPubKeyPEM, caCertPEM, caKeyPEM, DefaultCertDurationDays)
+		clientCertPEM, err = CreateClientCert(hostname, OUPlugin, clientPubKeyPEM, caCertPEM, caKeyPEM, DefaultCertDurationDays)
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle client failed: %s", err)
 		}
-		SaveKeyToPEM(clientKeyPEM, certFolder, wostapi.ClientKeyFile)
-		SaveCertToPEM(clientCertPEM, certFolder, wostapi.ClientCertFile)
+		SaveKeyToPEM(clientKeyPEM, certFolder, ClientKeyFile)
+		SaveCertToPEM(clientCertPEM, certFolder, ClientCertFile)
 	}
 	return nil
 }

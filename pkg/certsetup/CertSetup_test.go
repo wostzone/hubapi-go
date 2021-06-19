@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/wostzone/wostlib-go/pkg/certsetup"
 	"github.com/wostzone/wostlib-go/pkg/signing"
-	"github.com/wostzone/wostlib-go/wostapi"
 )
 
 var homeFolder string
@@ -37,7 +36,7 @@ func TestMain(m *testing.M) {
 
 func TestLoadCreateCertKey(t *testing.T) {
 	removeCerts()
-	privKey, err := certsetup.LoadOrCreateCertKey(certFolder, wostapi.ClientKeyFile)
+	privKey, err := certsetup.LoadOrCreateCertKey(certFolder, certsetup.ClientKeyFile)
 	assert.NoError(t, err)
 	assert.NotNil(t, privKey)
 }
@@ -56,7 +55,7 @@ func TestTLSCertificateGeneration(t *testing.T) {
 	clientKeyPEM, _ := signing.PrivateKeyToPEM(clientKey)
 	clientPubPEM, err := signing.PublicKeyToPEM(&clientKey.PublicKey)
 	require.NoError(t, err)
-	clientCertPEM, err := certsetup.CreateClientCert(hostname, wostapi.OUClient,
+	clientCertPEM, err := certsetup.CreateClientCert(hostname, certsetup.OUClient,
 		clientPubPEM, caCertPEM, caKeyPEM, certsetup.DefaultCertDurationDays)
 	require.NoErrorf(t, err, "Creating certificates failed:")
 	require.NotEmptyf(t, clientCertPEM, "Failed creating client certificate")
@@ -130,7 +129,7 @@ func TestHubCertBadCA(t *testing.T) {
 
 func TestClientCertBadCA(t *testing.T) {
 	clientID := "client1"
-	ou := wostapi.OUClient
+	ou := certsetup.OUClient
 	caCertPEM, caKeyPEM := certsetup.CreateHubCA()
 
 	clientKey := signing.CreateECDSAKeys()
@@ -166,7 +165,7 @@ func TestBadCert(t *testing.T) {
 	clientKey := signing.CreateECDSAKeys()
 	clientKeyPEM, _ := signing.PrivateKeyToPEM(clientKey)
 	clientPubPEM, _ := signing.PublicKeyToPEM(&clientKey.PublicKey)
-	clientCertPEM, err := certsetup.CreateClientCert(hostname, wostapi.OUClient, clientPubPEM, caCertPEM, caKeyPEM, certsetup.TempCertDurationDays)
+	clientCertPEM, err := certsetup.CreateClientCert(hostname, certsetup.OUClient, clientPubPEM, caCertPEM, caKeyPEM, certsetup.TempCertDurationDays)
 
 	assert.NotEmptyf(t, clientKeyPEM, "Missing client key")
 	assert.Errorf(t, err, "Creating certificates should fail")
@@ -180,19 +179,19 @@ func TestCreateCerts(t *testing.T) {
 	err = certsetup.CreateCertificateBundle(hostname, certFolder)
 	require.NoError(t, err, out)
 	// load the certs
-	clientKeyPEM, err := certsetup.LoadPEM(certFolder, wostapi.ClientKeyFile)
+	clientKeyPEM, err := certsetup.LoadPEM(certFolder, certsetup.ClientKeyFile)
 	require.NoError(t, err)
 	clientPrivKey, err := signing.PrivateKeyFromPEM(clientKeyPEM)
 	require.NoError(t, err)
 	pubKey := clientPrivKey.PublicKey
 	clientPubKeyPEM, err := signing.PublicKeyToPEM(&pubKey)
 	require.NoError(t, err)
-	caCertPEM, err := certsetup.LoadPEM(certFolder, wostapi.CaCertFile)
+	caCertPEM, err := certsetup.LoadPEM(certFolder, certsetup.CaCertFile)
 	assert.NoError(t, err)
-	caKeyPEM, err := certsetup.LoadPEM(certFolder, wostapi.CaKeyFile)
+	caKeyPEM, err := certsetup.LoadPEM(certFolder, certsetup.CaKeyFile)
 	assert.NoError(t, err)
 
-	clientCertPEM, err := certsetup.LoadPEM(certFolder, wostapi.ClientCertFile)
+	clientCertPEM, err := certsetup.LoadPEM(certFolder, certsetup.ClientCertFile)
 	_, err = tls.X509KeyPair([]byte(clientCertPEM), []byte(clientKeyPEM))
 	assert.NoError(t, err)
 

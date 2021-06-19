@@ -1,8 +1,6 @@
 package td
 
-import (
-	"github.com/wostzone/wostlib-go/wostapi"
-)
+import "github.com/wostzone/wostlib-go/pkg/vocab"
 
 // Thing property creation
 
@@ -11,21 +9,21 @@ import (
 //  description optional extra description of what the property does
 //  propType provides @type value for a property
 //  writable property is a configuration value and is writable
-func CreateProperty(title string, description string, propType wostapi.ThingPropType) map[string]interface{} {
+func CreateProperty(title string, description string, propType vocab.ThingPropType) map[string]interface{} {
 
-	var writable = (propType == wostapi.PropertyTypeConfig)
+	var writable = (propType == vocab.PropertyTypeConfig)
 	prop := make(map[string]interface{}, 0)
-	prop[wostapi.WoTAtType] = propType
-	prop[wostapi.WoTTitle] = title
+	prop[vocab.WoTAtType] = propType
+	prop[vocab.WoTTitle] = title
 	if description != "" {
-		prop[wostapi.WoTDescription] = description
+		prop[vocab.WoTDescription] = description
 	}
 	// default is read-only
 	if writable {
 		prop["writable"] = writable //
 		// see https://www.w3.org/TR/2020/WD-wot-thing-description11-20201124/#example-29
-		prop[wostapi.WoTReadOnly] = !writable
-		prop[wostapi.WoTWriteOnly] = writable
+		prop[vocab.WoTReadOnly] = !writable
+		prop[vocab.WoTWriteOnly] = writable
 	}
 	return prop
 }
@@ -33,7 +31,7 @@ func CreateProperty(title string, description string, propType wostapi.ThingProp
 // Return the value of a property in the TD
 // If the property doesn't exist in the TD or there is not value attribute, then found returns false
 func GetPropertyValue(thingTD map[string]interface{}, propName string) (value string, found bool) {
-	props, found := thingTD[wostapi.WoTProperties].(map[string]interface{})
+	props, found := thingTD[vocab.WoTProperties].(map[string]interface{})
 	if !found || props == nil {
 		return
 	}
@@ -41,7 +39,7 @@ func GetPropertyValue(thingTD map[string]interface{}, propName string) (value st
 	if !found || propOfName == nil {
 		return // TD does not have this property or it is not a map[string]interface[}
 	}
-	valueInterface, found := propOfName[wostapi.AttrNameValue]
+	valueInterface, found := propOfName[vocab.AttrNameValue]
 	if found && valueInterface != nil {
 		value = valueInterface.(string)
 	}
@@ -50,7 +48,7 @@ func GetPropertyValue(thingTD map[string]interface{}, propName string) (value st
 
 // SetPropertyEnum sets a enumerated list of valid values of a property
 func SetPropertyEnum(prop map[string]interface{}, enumValues ...interface{}) {
-	prop[wostapi.WoTEnum] = enumValues
+	prop[vocab.WoTEnum] = enumValues
 }
 
 // SetPropertyDataTypeArray sets the property data type as an array (of ?)
@@ -58,10 +56,10 @@ func SetPropertyEnum(prop map[string]interface{}, enumValues ...interface{}) {
 //  minItems is the minimum nr of items required
 //  maxItems sets the maximum nr of items required
 func SetPropertyDataTypeArray(prop map[string]interface{}, minItems uint, maxItems uint) {
-	prop[wostapi.WoTDataType] = wostapi.WoTDataTypeArray
+	prop[vocab.WoTDataType] = vocab.WoTDataTypeArray
 	if maxItems > 0 {
-		prop[wostapi.WoTMinItems] = minItems
-		prop[wostapi.WoTMaxItems] = maxItems
+		prop[vocab.WoTMinItems] = minItems
+		prop[vocab.WoTMaxItems] = maxItems
 	}
 }
 
@@ -70,10 +68,10 @@ func SetPropertyDataTypeArray(prop map[string]interface{}, minItems uint, maxIte
 //  min is the minimum value
 //  max sets the maximum value
 func SetPropertyDataTypeInteger(prop map[string]interface{}, min int, max int) {
-	prop[wostapi.WoTDataType] = wostapi.WoTDataTypeInteger
+	prop[vocab.WoTDataType] = vocab.WoTDataTypeInteger
 	if !(min == 0 && max == 0) {
-		prop[wostapi.WoTMinimum] = min
-		prop[wostapi.WoTMaximum] = max
+		prop[vocab.WoTMinimum] = min
+		prop[vocab.WoTMaximum] = max
 	}
 }
 
@@ -82,17 +80,17 @@ func SetPropertyDataTypeInteger(prop map[string]interface{}, min int, max int) {
 //  min is the minimum value
 //  max sets the maximum value
 func SetPropertyDataTypeNumber(prop map[string]interface{}, min float64, max float64) {
-	prop[wostapi.WoTDataType] = wostapi.WoTDataTypeNumber
+	prop[vocab.WoTDataType] = vocab.WoTDataTypeNumber
 	if !(min == 0 && max == 0) {
-		prop[wostapi.WoTMinimum] = min
-		prop[wostapi.WoTMaximum] = max
+		prop[vocab.WoTMinimum] = min
+		prop[vocab.WoTMaximum] = max
 	}
 }
 
 // SetPropertyDataTypeObject sets the property data type as an object
 func SetPropertyDataTypeObject(prop map[string]interface{}, object interface{}) {
-	prop[wostapi.WoTDataType] = wostapi.WoTDataTypeObject
-	prop[wostapi.WoTDataTypeObject] = object
+	prop[vocab.WoTDataType] = vocab.WoTDataTypeObject
+	prop[vocab.WoTDataTypeObject] = object
 }
 
 // SetPropertyDataTypeString sets the property data type as string
@@ -100,16 +98,16 @@ func SetPropertyDataTypeObject(prop map[string]interface{}, object interface{}) 
 //  minLength is the minimum value
 //  maxLength sets the maximum value
 func SetPropertyDataTypeString(prop map[string]interface{}, minLength int, maxLength int) {
-	prop["type"] = wostapi.WoTDataTypeString
+	prop["type"] = vocab.WoTDataTypeString
 	if !(minLength == 0 && maxLength == 0) {
-		prop[wostapi.WoTMinLength] = minLength
-		prop[wostapi.WoTMaxLength] = maxLength
+		prop[vocab.WoTMinLength] = minLength
+		prop[vocab.WoTMaxLength] = maxLength
 	}
 }
 
 // SetTDPropertyEnum sets the unit of a property
 func SetPropertyUnit(prop map[string]interface{}, unit string) {
-	prop[wostapi.WoTUnit] = unit
+	prop[vocab.WoTUnit] = unit
 }
 
 // SetTDPropertyEnum sets the value of a property at the time of TD creation
@@ -120,5 +118,5 @@ func SetPropertyUnit(prop map[string]interface{}, unit string) {
 // Note2: This is optional and not part of the WoT specification. It is however allowed
 // by the specification (although it might need a schema specified???)
 func SetPropertyValue(prop map[string]interface{}, value string) {
-	prop[wostapi.AttrNameValue] = value
+	prop[vocab.AttrNameValue] = value
 }

@@ -1,4 +1,4 @@
-package mqttclient
+package hubclient
 
 import (
 	"crypto/tls"

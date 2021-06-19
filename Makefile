@@ -4,7 +4,7 @@ FORCE: help
 
 all: FORCE ## This is a library, nothing to build
 
-test: FORCE ## Run tests (todo fix this)
+test: FORCE ## Run tests 
 		$(GOTEST) -v ./pkg/...
 
 clean: ## Clean distribution files
