@@ -106,7 +106,8 @@ func CreateCertificateBundle(hostname string, certFolder string) error {
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle client failed: %s", err)
 		}
-		clientCertPEM, err = CreateClientCert(hostname, OUPlugin, clientPubKeyPEM, caCertPEM, caKeyPEM, DefaultCertDurationDays)
+		clientCertPEM, err = CreateClientCert(hostname, OUPlugin, clientPubKeyPEM,
+			caCertPEM, caKeyPEM, time.Now(), DefaultCertDurationDays)
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle client failed: %s", err)
 		}
@@ -126,8 +127,11 @@ func CreateCertificateBundle(hostname string, certFolder string) error {
 //  clientPubKeyPEM with the client's public key
 //  caCertPEM CA's certificate in PEM format.
 //  caKeyPEM CA's ECDSA key used in signing.
+//  start time the certificate is first valid. Intended for testing. Use time.now()
+//  durationDays nr of days the certificate will be valid
 // Returns the signed certificate or error
-func CreateClientCert(clientID string, ou string, clientPubKeyPEM, caCertPEM string, caKeyPEM string, durationDays int) (certPEM string, err error) {
+func CreateClientCert(clientID string, ou string, clientPubKeyPEM, caCertPEM string,
+	caKeyPEM string, start time.Time, durationDays int) (certPEM string, err error) {
 
 	caPrivKey, err := signing.PrivateKeyFromPEM(caKeyPEM)
 	if err != nil {
@@ -152,8 +156,8 @@ func CreateClientCert(clientID string, ou string, clientPubKeyPEM, caCertPEM str
 			OrganizationalUnit: []string{ou},
 			Names:              make([]pkix.AttributeTypeAndValue, 0),
 		},
-		NotBefore: time.Now().AddDate(0, 0, -1),
-		NotAfter:  time.Now().AddDate(0, 0, durationDays),
+		NotBefore: start,
+		NotAfter:  start.AddDate(0, 0, durationDays),
 
 		KeyUsage:    x509.KeyUsageDigitalSignature,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},

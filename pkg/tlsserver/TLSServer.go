@@ -77,7 +77,12 @@ func (srv *TLSServer) Start() error {
 		ClientAuth: tls.VerifyClientCertIfGiven,
 		// ClientAuth: tls.RequireAndVerifyClientCert,
 		ClientCAs:          caCertPool,
+		MinVersion:         tls.VersionTLS12,
 		InsecureSkipVerify: false,
+		// VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+		// 	logrus.Infof("***TLS server VerifyPeerCertificate called")
+		// 	return nil
+		// },
 	}
 
 	srv.httpServer = &http.Server{

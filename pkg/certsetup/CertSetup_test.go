@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,7 +57,7 @@ func TestTLSCertificateGeneration(t *testing.T) {
 	clientPubPEM, err := signing.PublicKeyToPEM(&clientKey.PublicKey)
 	require.NoError(t, err)
 	clientCertPEM, err := certsetup.CreateClientCert(hostname, certsetup.OUClient,
-		clientPubPEM, caCertPEM, caKeyPEM, certsetup.DefaultCertDurationDays)
+		clientPubPEM, caCertPEM, caKeyPEM, time.Now(), certsetup.DefaultCertDurationDays)
 	require.NoErrorf(t, err, "Creating certificates failed:")
 	require.NotEmptyf(t, clientCertPEM, "Failed creating client certificate")
 	require.NotEmptyf(t, clientKeyPEM, "Failed creating client key")
@@ -137,15 +138,18 @@ func TestClientCertBadCA(t *testing.T) {
 	clientPubPEM, _ := signing.PublicKeyToPEM(&clientKey.PublicKey)
 
 	//
-	clientCertPEM, err := certsetup.CreateClientCert(clientID, ou, "bad pubkey", caCertPEM, caKeyPEM, certsetup.TempCertDurationDays)
+	clientCertPEM, err := certsetup.CreateClientCert(clientID, ou, "bad pubkey",
+		caCertPEM, caKeyPEM, time.Now(), certsetup.TempCertDurationDays)
 	assert.Error(t, err)
 	assert.Empty(t, clientCertPEM)
 
-	clientCertPEM, err = certsetup.CreateClientCert(clientID, ou, clientPubPEM, "bad CAcert", caKeyPEM, certsetup.TempCertDurationDays)
+	clientCertPEM, err = certsetup.CreateClientCert(clientID, ou, clientPubPEM,
+		"bad CAcert", caKeyPEM, time.Now(), certsetup.TempCertDurationDays)
 	assert.Error(t, err)
 	assert.Empty(t, clientCertPEM)
 
-	clientCertPEM, err = certsetup.CreateClientCert(clientID, ou, clientPubPEM, caCertPEM, "bad CA Key", certsetup.TempCertDurationDays)
+	clientCertPEM, err = certsetup.CreateClientCert(clientID, ou, clientPubPEM,
+		caCertPEM, "bad CA Key", time.Now(), certsetup.TempCertDurationDays)
 	assert.Error(t, err)
 	assert.Empty(t, clientCertPEM)
 }
@@ -165,7 +169,8 @@ func TestBadCert(t *testing.T) {
 	clientKey := signing.CreateECDSAKeys()
 	clientKeyPEM, _ := signing.PrivateKeyToPEM(clientKey)
 	clientPubPEM, _ := signing.PublicKeyToPEM(&clientKey.PublicKey)
-	clientCertPEM, err := certsetup.CreateClientCert(hostname, certsetup.OUClient, clientPubPEM, caCertPEM, caKeyPEM, certsetup.TempCertDurationDays)
+	clientCertPEM, err := certsetup.CreateClientCert(hostname, certsetup.OUClient, clientPubPEM,
+		caCertPEM, caKeyPEM, time.Now(), certsetup.TempCertDurationDays)
 
 	assert.NotEmptyf(t, clientKeyPEM, "Missing client key")
 	assert.Errorf(t, err, "Creating certificates should fail")
@@ -196,7 +201,8 @@ func TestCreateCerts(t *testing.T) {
 	assert.NoError(t, err)
 
 	// CA key/cert and pubkey must be usable for creating a cert
-	cert, err := certsetup.CreateClientCert("client1", "ou1", clientPubKeyPEM, caCertPEM, caKeyPEM, certsetup.TempCertDurationDays)
+	cert, err := certsetup.CreateClientCert("client1", "ou1", clientPubKeyPEM,
+		caCertPEM, caKeyPEM, time.Now(), certsetup.TempCertDurationDays)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 

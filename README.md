@@ -1,26 +1,21 @@
-# WoST Web Of Things Library & API
+# WoST Web Of Things Library
 
-This repository defines the API's and supporting library to connect to the WoST Hub and exchange information between Things and consumers. It contains the type definitions and client libraries to exchange messages via the hub as well as constructing a *Thing Description* document. This API aims to adhere to the [WoT Specfications](https://www.w3.org/WoT/).
+This repository provides a library with definitions and methods to connect to the WoST Hub and exchange information between Things and consumers. It contains the type definitions and methods for devices to publish 'Thing' information and for users to subscribe to updates. 
 
 ## Project Status
 
 Status: The status of this library is Alpha. It is functional but breaking changes must be expected.
 
-This library provides the Golang implementation of the MQTT API of the WoST Hub. MQTT is the most direct
-method to talk to the Hub. There is no need for Golang developers to use HTTP or Websockets.
-
 This API repository is usable:
 - The hubconfig can be used to read configuration for use in plugins
-- The certsetup can be used to generate self signed certificates (see Hub's installation)
-- The hubclient package can be used to create a MQTT client connection to the Hub and publish/subscribe messages
-- The td package can be used to construct a TD with properties, events and actions
+- The certsetup can be used to manage self signed certificates (see Hub's installation)
+- The hubclient package can be used to create a MQTT client connection to the Hub message bus and publish/subscribe messages
+- The td package can be used to construct a WoT TD with properties, events and actions
 
 What is not yet functional:
-- The API for Thing and consumer provisioning.
 - signing of messages is under consideration. This needs a protocol definition to follow. Presumably using JWS
 - encryption of messages is under consideration. This needs a protocol definition to follow. Presumably using JWE
-- the generated TD is basic and might not yet conform to the standard
-- the methods in this API are preliminary and can still change
+- the generated TD is basic and might not conform to the WoT standard that is itself in flux (June 2021)
 - the client does not use the TD forms. This is under consideration.
 
 
@@ -32,7 +27,7 @@ This project is aimed at WoST Thing and Hub Plugin developers that share concern
 
 ## Summary
 
-This library provides API's to exchange messages with the WoST Hub in a WoT compatible manner. IoT developers can use it to provision their IoT device, publish their Thing Description, send events and receive actions. Plugin developers can use it to receive Thing Descriptions, events and property values, and to request Thing actions.
+This library provides functions and a vocabulary to exchange messages with the WoST Hub in a WoT compatible manner. IoT developers can use it to provision their IoT device, publish their Thing Description, send events and receive actions. Plugin developers can use it to receive Thing Descriptions, events and property values, and to request Thing actions.
 
 A Python and Javascript version is planned for the future.
 
@@ -46,20 +41,23 @@ Supported hubs and gateways:
 
 ## Usage
 
-This module is intended to be used as a library by Things, Consumers and Hub Plugin developers. It features support for building WoT compliant Thing Description documents, reading Hub and plugin configuration files, client connections to the Hub over HTTP/TLS and MQTT/TLS.
-
-The plugin test files contain examples for clients.
+This module is intended to be used as a library by Things, Consumers and Hub Plugin developers. It features support for building WoT compliant Thing Description documents, reading Hub and plugin configuration files, and create client connections to the Hub over HTTP/TLS and MQTT/TLS.
 
 ### hubconfig
 
->### Todo: include simple examples
-
 The hubconfig package contains the library to read the Hub and plugin configuration files and setup logging. It is intended for plugin developers that need Hub configuration. 
+
+```golang
+	import "github.com/wostzone/wostlib-go/pkg/hubconfig"
+  ...
+	hc, err := hubconfig.LoadHubConfig(homeFolder)
+  ...
+```
 
 
 ### hubclient
 
-The hubclient package contains the client code to connect to the Hub. Currently this supports the MQTT protocol. This package is for convenience. It wraps the Paho mqtt client and adds automatic reconnect and resubscribes in case connections get lost. 
+The hubclient package contains the client code to connect to the Hub using MQTT. This package wraps the Paho mqtt client and adds automatic reconnect and resubscribes in case connections get lost. 
 
 See the [MQTT API documentation](docs/mqtt-api.md) for details. This client does not yet use [the Form method](https://www.w3.org/TR/2020/WD-wot-thing-description11-20201124/#protocol-bindings).  This will be added in the near future.
 
@@ -67,14 +65,24 @@ Note that the above WoT specification talks about interaction between consumer a
 
 The api/IThingClient.go package contains the interface on using this library.
 
+Example:
+```golang
+	import "github.com/wostzone/wostlib-go/pkg/hubclient"
+  ...
+  mqttHostPort := "localhost:33101"
+  caCertFile := ...
+  clientCertFile := ...
+  clientKeyFile := ...
+ 	deviceClient := hubclient.NewMqttHubDeviceClient(deviceID, mqttHostPort, 
+   caCertFile, clientCertFile, clientKeyFile)
+  err := deviceClient.Start()
+
+```
+
 ### certsetup
 
->### This section is subject to change
+The certsetup package provides functions for creating, saving and loading self signed certificates include a self signed Certificate Authority (CA). These are used for verifying authenticity of server and clients of the message bus.
 
-The certsetup package provides functions for creating self signed certificates include a self signed Certificate Authority (CA). These can be used for verifying authenticity of server and clients of the message bus.
-
-Most clients will use the existing CA certificate to connect to the MQTT message bus.
-For this to work, the client must load the hubconfig using hubconfig.SetHubCommandlineArgs() to load the hub configuration including the certificate folder. The hubclient.NewThingClient and NewConsumerClient expect a CA certificate file. This can be determined with path.Join(hubconfig.CertFolder, certsetup.CaCertFile), or use the NewPluginClient() method which takes the hubconfig configuration and does this for you.
 
 
 ### signing
@@ -88,10 +96,37 @@ Well, soon anyways...
 Signing and sender verification is key to guarantee that the information has not been tampered with and originated from the sender. The WoT spec does not (?) have a place for this, so it might become a WoST extension.
 
 ### td
->### Todo: include simple examples
 
 The td package provides methods to construct a WoT compliant Thing Description. 
 
+```json
+	import "github.com/wostzone/wostlib-go/pkg/td"
+	import  "github.com/wostzone/wostlib-go/pkg/vocab"
+
+  ...
+	thing1 := td.CreateTD(deviceID, vocab.DeviceTypeSensor)
+ 	prop1 := td.CreateProperty("Prop1", "First property", vocab.PropertyTypeSensor)
+ 	td.AddTDProperty(thing1, "prop1", prop)
+  ...
+```
+
+### testenv
+
+The 'testenv' package includes a mosquitto launcher and test environment for testing plugins.
+
+### tlsclient
+
+Wrapper around HTTP/TLS connections. 
+Used by the IDProv protocol binding.
+
+### tlsserver
+
+Server of HTTP/TLS connections. 
+Used by the IDProv protocol server.
+
+### vocab
+
+Vocabulary of property and attributes names for building and using TDs.
 
 # Contributing
 
