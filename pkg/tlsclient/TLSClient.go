@@ -23,15 +23,27 @@ import (
 type TLSClient struct {
 	address    string
 	port       uint
-	certFolder string
+	clientCert *x509.Certificate
+	// certFolder string
+	// clientCertFile string
+	// clientKeyFile  string
+	// caCertFile string
 	httpClient *http.Client
 	timeout    time.Duration
+}
+
+// ClientCertificate returns the client certificate or nil if none is used
+func (cl *TLSClient) Certificate() *x509.Certificate {
+	return cl.clientCert
 }
 
 // GetOutboundInterface Get preferred outbound network interface of this machine
 // Credits: https://stackoverflow.com/questions/23558425/how-do-i-get-the-local-ip-address-in-go
 // and https://qiita.com/shaching/items/4c2ee8fd2914cce8687c
 func GetOutboundInterface(address string) (interfaceName string, macAddress string, ipAddr net.IP) {
+	if address == "" {
+		address = "1.1.1.1"
+	}
 
 	// This dial command doesn't actually create a connection
 	conn, err := net.Dial("udp", address+":9999")
@@ -129,37 +141,57 @@ func (cl *TLSClient) Invoke(method string, path string, msg interface{}) ([]byte
 }
 
 // Start the client.
-// 1. If a CA certificate is not available then insecure-skip-verify is used to allow
-// connection to an unverified server (leap of faith)
-// 2. Mutual TLS authentication is used when both CA and client certificates are available
-func (cl *TLSClient) Start() (err error) {
+// If a CA certificate is not available then insecure-skip-verify is used to allow
+// connection to an unverified server (leap of faith).
+// If a CA and client certificate are available then mutual TLS authentication is used.
+//
+//  address is the server hostname or IP address to connect to
+//  port to connect to
+//  clientCertFile path to client certificate PEM file if available, "" if not available
+//  clientKeyFile path to client key PEM file if available, "" if not available
+//  caCertFile path to CA certificate PEM file, if available, "" if not available
+// Returns nil if successful, or an error if start failed
+func (cl *TLSClient) Start(
+	address string, port uint,
+	clientCertFile string, clientKeyFile string, caCertFile string) (err error) {
 	var clientCertList []tls.Certificate = []tls.Certificate{}
 	var checkServerCert = false
 
+	cl.address = address
+	cl.port = port
+
 	// Use CA certificate for server authentication if it exists
-	caCertPEM, err := certsetup.LoadPEM(cl.certFolder, certsetup.CaCertFile)
+	// caCertPEM, err := certsetup.LoadPEM(cl.certFolder, certsetup.CaCertFile)
+	caCertPEM, err := certsetup.LoadPEM("", caCertFile)
 	caCertPool := x509.NewCertPool()
 	if err == nil {
-		logrus.Infof("TLSClient.Start: Using CA certificate in '%s' for server verification", certsetup.CaCertFile)
+		logrus.Infof("TLSClient.Start: Using CA certificate in '%s' for server verification", caCertFile)
 		caCertPool.AppendCertsFromPEM([]byte(caCertPEM))
 		checkServerCert = true
 	} else {
-		logrus.Infof("TLSClient.Start, No CA certificate at '%s/%s'. InsecureSkipVerify used", cl.certFolder, certsetup.CaCertFile)
+		logrus.Infof("TLSClient.Start, No CA certificate at '%s'. InsecureSkipVerify used", caCertFile)
+		checkServerCert = false
 	}
 
 	// Use client certificate for mutual authentication with the server
-	clientCertPEM, _ := certsetup.LoadPEM(cl.certFolder, certsetup.ClientCertFile)
-	clientKeyPEM, _ := certsetup.LoadPEM(cl.certFolder, certsetup.ClientKeyFile)
+	clientCertPEM, _ := certsetup.LoadPEM("", clientCertFile)
+	clientKeyPEM, _ := certsetup.LoadPEM("", clientKeyFile)
 	if clientCertPEM != "" && clientKeyPEM != "" {
-		logrus.Infof("TLSClient.Start: Using client certificate from %s for mutual auth", certsetup.ClientCertFile)
-		clientCert, err := tls.X509KeyPair([]byte(clientCertPEM), []byte(clientKeyPEM))
+		logrus.Infof("TLSClient.Start: Using client certificate from %s for mutual auth", certsetup.PluginCertFile)
+		cl.clientCert, err = certsetup.CertFromPEM(clientCertPEM)
 		if err != nil {
-			logrus.Error("TLSClient.Start: Invalid client certificate or key: ", err)
+			logrus.Error("TLSClient.Start: Invalid client certificate PEM: ", err)
 			return err
 		}
-		clientCertList = append(clientCertList, clientCert)
+		tlsCert, err := tls.X509KeyPair([]byte(clientCertPEM), []byte(clientKeyPEM))
+
+		if err != nil {
+			logrus.Errorf("TLSClient.Start: Cannot create TLS certificate from PEM: %s", err)
+			return err
+		}
+		clientCertList = append(clientCertList, tlsCert)
 	} else {
-		logrus.Infof("TLSClient.Start, No client key/certificate in '%s/%s'. Mutual auth disabled.", cl.certFolder, certsetup.ClientKeyFile)
+		logrus.Infof("TLSClient.Start, No client key/certificate in '%s'. Mutual auth disabled.", clientKeyFile)
 	}
 	tlsConfig := &tls.Config{
 		RootCAs:            caCertPool,
@@ -200,12 +232,9 @@ func (cl *TLSClient) Stop() {
 //  port to connect to
 //  certFolder folder with ca, client certs and key. (see cersetup for standard names)
 // returns TLS client for submitting requests
-func NewTLSClient(address string, port uint, certFolder string) *TLSClient {
+func NewTLSClient() *TLSClient {
 	cl := &TLSClient{
-		address:    address,
-		port:       port,
-		certFolder: certFolder,
-		timeout:    time.Second,
+		timeout: time.Second,
 	}
 	return cl
 }

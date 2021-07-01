@@ -21,7 +21,7 @@ var homeFolder string
 var certFolder string
 
 // removeCerts easy cleanup for existing device certificate
-func removeCerts() {
+func removeServerCerts() {
 	_, _ = exec.Command("sh", "-c", "rm -f "+path.Join(certFolder, "*.pem")).Output()
 }
 
@@ -36,14 +36,15 @@ func TestMain(m *testing.M) {
 }
 
 func TestLoadCreateCertKey(t *testing.T) {
-	removeCerts()
-	privKey, err := certsetup.LoadOrCreateCertKey(certFolder, certsetup.ClientKeyFile)
+	removeServerCerts()
+	privKey, err := certsetup.LoadOrCreateCertKey(certFolder, certsetup.PluginKeyFile)
 	assert.NoError(t, err)
 	assert.NotNil(t, privKey)
 }
 
 func TestTLSCertificateGeneration(t *testing.T) {
-	hostname := "127.0.0.1"
+	hostnames := []string{"127.0.0.1"}
+	clientID := "3rdparty-client"
 
 	// test creating ca and server certificates
 	caCertPEM, caKeyPEM := certsetup.CreateHubCA()
@@ -56,7 +57,7 @@ func TestTLSCertificateGeneration(t *testing.T) {
 	clientKeyPEM, _ := signing.PrivateKeyToPEM(clientKey)
 	clientPubPEM, err := signing.PublicKeyToPEM(&clientKey.PublicKey)
 	require.NoError(t, err)
-	clientCertPEM, err := certsetup.CreateClientCert(hostname, certsetup.OUClient,
+	clientCertPEM, err := certsetup.CreateClientCert(clientID, certsetup.OUClient,
 		clientPubPEM, caCertPEM, caKeyPEM, time.Now(), certsetup.DefaultCertDurationDays)
 	require.NoErrorf(t, err, "Creating certificates failed:")
 	require.NotEmptyf(t, clientCertPEM, "Failed creating client certificate")
@@ -65,7 +66,7 @@ func TestTLSCertificateGeneration(t *testing.T) {
 	serverKey := signing.CreateECDSAKeys()
 	serverKeyPEM, _ := signing.PrivateKeyToPEM(serverKey)
 	serverPubPEM, err := signing.PublicKeyToPEM(&serverKey.PublicKey)
-	serverCertPEM, err := certsetup.CreateHubCert(hostname, serverPubPEM, caCertPEM, caKeyPEM)
+	serverCertPEM, err := certsetup.CreateHubCert(hostnames, serverPubPEM, caCertPEM, caKeyPEM)
 	require.NoErrorf(t, err, "Failed creating server certificate")
 	// serverCert, err := tls.X509KeyPair(serverCertPEM, serverKeyPEM)
 	require.NoErrorf(t, err, "Failed creating server certificate")
@@ -85,7 +86,7 @@ func TestTLSCertificateGeneration(t *testing.T) {
 
 	opts := x509.VerifyOptions{
 		Roots:   certpool,
-		DNSName: hostname,
+		DNSName: hostnames[0],
 		// DNSName:       "127.0.0.1",
 		Intermediates: x509.NewCertPool(),
 	}
@@ -94,7 +95,7 @@ func TestTLSCertificateGeneration(t *testing.T) {
 }
 
 func TestHubCert(t *testing.T) {
-	hostname := "127.0.0.1"
+	hostnames := []string{"127.0.0.1"}
 
 	// test creating hub certificate
 	caCertPEM, caKeyPEM := certsetup.CreateHubCA()
@@ -104,26 +105,26 @@ func TestHubCert(t *testing.T) {
 	require.NoErrorf(t, err, "Failed parsing CA certificate")
 	hubKey := signing.CreateECDSAKeys()
 	hubPubPEM, err := signing.PublicKeyToPEM(&hubKey.PublicKey)
-	hubCertPEM, err := certsetup.CreateHubCert(hostname, hubPubPEM, caCertPEM, caKeyPEM)
+	hubCertPEM, err := certsetup.CreateHubCert(hostnames, hubPubPEM, caCertPEM, caKeyPEM)
 	require.NoErrorf(t, err, "Failed creating hub certificate")
 	require.NotNil(t, hubCertPEM)
 }
 
 func TestHubCertBadCA(t *testing.T) {
-	hostname := "127.0.0.1"
+	hostnames := []string{"127.0.0.1"}
 	caCertPEM, caKeyPEM := certsetup.CreateHubCA()
 	hubKey := signing.CreateECDSAKeys()
 	hubPubPEM, err := signing.PublicKeyToPEM(&hubKey.PublicKey)
 	//
-	hubCertPEM, err := certsetup.CreateHubCert(hostname, hubPubPEM, caCertPEM, "BadCAKey")
+	hubCertPEM, err := certsetup.CreateHubCert(hostnames, hubPubPEM, caCertPEM, "BadCAKey")
 	require.Error(t, err)
 	require.Empty(t, hubCertPEM)
 
-	hubCertPEM, err = certsetup.CreateHubCert(hostname, hubPubPEM, "BadCACert", caKeyPEM)
+	hubCertPEM, err = certsetup.CreateHubCert(hostnames, hubPubPEM, "BadCACert", caKeyPEM)
 	require.Error(t, err)
 	require.Empty(t, hubCertPEM)
 
-	hubCertPEM, err = certsetup.CreateHubCert(hostname, "BadHubPublicKey", caCertPEM, caKeyPEM)
+	hubCertPEM, err = certsetup.CreateHubCert(hostnames, "BadHubPublicKey", caCertPEM, caKeyPEM)
 	require.Error(t, err)
 	require.Empty(t, hubCertPEM)
 }
@@ -155,7 +156,8 @@ func TestClientCertBadCA(t *testing.T) {
 }
 
 func TestBadCert(t *testing.T) {
-	hostname := "127.0.0.1"
+	// hostnames := []string{"127.0.0.1"}
+	clientID := "3rdpartyID"
 	caCertPEM, caKeyPEM := certsetup.CreateHubCA()
 	// caCertPEM = pem.Encode( )[]byte{1, 2, 3}
 
@@ -169,7 +171,7 @@ func TestBadCert(t *testing.T) {
 	clientKey := signing.CreateECDSAKeys()
 	clientKeyPEM, _ := signing.PrivateKeyToPEM(clientKey)
 	clientPubPEM, _ := signing.PublicKeyToPEM(&clientKey.PublicKey)
-	clientCertPEM, err := certsetup.CreateClientCert(hostname, certsetup.OUClient, clientPubPEM,
+	clientCertPEM, err := certsetup.CreateClientCert(clientID, certsetup.OUClient, clientPubPEM,
 		caCertPEM, caKeyPEM, time.Now(), certsetup.TempCertDurationDays)
 
 	assert.NotEmptyf(t, clientKeyPEM, "Missing client key")
@@ -178,13 +180,16 @@ func TestBadCert(t *testing.T) {
 }
 
 func TestCreateCerts(t *testing.T) {
-	hostname := "localhost"
-	out, err := exec.Command("sh", "-c", "rm -f "+path.Join(certFolder, "*.pem")).Output()
-	require.NoError(t, err, out)
-	err = certsetup.CreateCertificateBundle(hostname, certFolder)
-	require.NoError(t, err, out)
+	hostnames := []string{"localhost"}
+
+	// out, err := exec.Command("sh", "-c", "rm -f "+path.Join(certFolder, "*.pem")).Output()
+	// require.NoError(t, err, out)
+	removeServerCerts()
+
+	err := certsetup.CreateCertificateBundle(hostnames, certFolder)
+	require.NoError(t, err)
 	// load the certs
-	clientKeyPEM, err := certsetup.LoadPEM(certFolder, certsetup.ClientKeyFile)
+	clientKeyPEM, err := certsetup.LoadPEM(certFolder, certsetup.PluginKeyFile)
 	require.NoError(t, err)
 	clientPrivKey, err := signing.PrivateKeyFromPEM(clientKeyPEM)
 	require.NoError(t, err)
@@ -196,7 +201,7 @@ func TestCreateCerts(t *testing.T) {
 	caKeyPEM, err := certsetup.LoadPEM(certFolder, certsetup.CaKeyFile)
 	assert.NoError(t, err)
 
-	clientCertPEM, err := certsetup.LoadPEM(certFolder, certsetup.ClientCertFile)
+	clientCertPEM, err := certsetup.LoadPEM(certFolder, certsetup.PluginCertFile)
 	_, err = tls.X509KeyPair([]byte(clientCertPEM), []byte(clientKeyPEM))
 	assert.NoError(t, err)
 

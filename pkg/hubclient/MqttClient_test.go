@@ -33,6 +33,7 @@ const testPluginID = "test-user"
 
 // setup - launch mosquitto
 func TestMain(m *testing.M) {
+	hostnames := []string{"localhost"}
 	cwd, _ := os.Getwd()
 	home := path.Join(cwd, "../../test")
 	os.Chdir(home)
@@ -40,11 +41,11 @@ func TestMain(m *testing.M) {
 
 	mqttTestCaCertFile = path.Join(certsFolder, certsetup.CaCertFile)
 	mqttTestCaKeyFile = path.Join(certsFolder, certsetup.CaKeyFile)
-	mqttTestClientCertFile = path.Join(certsFolder, certsetup.ClientCertFile)
-	mqttTestClientKeyFile = path.Join(certsFolder, certsetup.ClientKeyFile)
+	mqttTestClientCertFile = path.Join(certsFolder, certsetup.PluginCertFile)
+	mqttTestClientKeyFile = path.Join(certsFolder, certsetup.PluginKeyFile)
 
 	configFolder := path.Join(home, "config")
-	certsetup.CreateCertificateBundle("localhost", certsFolder)
+	certsetup.CreateCertificateBundle(hostnames, certsFolder)
 	mosqConfigPath := path.Join(configFolder, mosquittoConfigFile)
 
 	mosquittoCmd, err := testenv.Launch(mosqConfigPath)

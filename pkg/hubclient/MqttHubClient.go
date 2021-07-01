@@ -380,13 +380,13 @@ func NewMqttHubClient(hostPort string, caCertFile string, userName string, passw
 func NewMqttHubPluginClient(pluginID string, hubConfig *hubconfig.HubConfig) *MqttHubClient {
 
 	caCertPath := path.Join(hubConfig.CertsFolder, certsetup.CaCertFile)
-	clientCertPath := path.Join(hubConfig.CertsFolder, certsetup.ClientCertFile)
-	clientKeyPath := path.Join(hubConfig.CertsFolder, certsetup.ClientKeyFile)
+	pluginCertPath := path.Join(hubConfig.CertsFolder, certsetup.PluginCertFile)
+	pluginKeyPath := path.Join(hubConfig.CertsFolder, certsetup.PluginKeyFile)
 	hostPort := fmt.Sprintf("%s:%d", hubConfig.Messenger.Address, hubConfig.Messenger.ClientPortMqtt)
 	client := &MqttHubClient{
 		timeoutSec:     3,
-		clientCertFile: clientCertPath,
-		clientKeyFile:  clientKeyPath,
+		clientCertFile: pluginCertPath,
+		clientKeyFile:  pluginKeyPath,
 		userName:       pluginID,
 		mqttClient:     NewMqttClient(hostPort, caCertPath),
 	}
@@ -401,12 +401,12 @@ func NewMqttHubPluginClient(pluginID string, hubConfig *hubconfig.HubConfig) *Mq
 //   clientCertFile client certificate to identify the device
 //   clientKeyFile for certificate authentication
 func NewMqttHubDeviceClient(deviceID string, hostPort string,
-	caCertFile string, clientCertFile string, clientKeyFile string) *MqttHubClient {
+	caCertFile string, deviceCertFile string, deviceKeyFile string) *MqttHubClient {
 
 	client := &MqttHubClient{
 		timeoutSec:     3,
-		clientCertFile: clientCertFile,
-		clientKeyFile:  clientKeyFile,
+		clientCertFile: deviceCertFile,
+		clientKeyFile:  deviceKeyFile,
 		userName:       deviceID,
 		mqttClient:     NewMqttClient(hostPort, caCertFile),
 	}

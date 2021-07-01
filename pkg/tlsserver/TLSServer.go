@@ -43,8 +43,8 @@ func (srv *TLSServer) AddHandler(path string, handler func(http.ResponseWriter, 
 	srv.router.HandleFunc(path, handler)
 }
 
-// Start the TLS server using CA and server certificates from the certfolder
-// A client certificate is requested but not required.
+// Start the TLS server using CA and Hub certificates from the certfolder
+// The server will request but not require a client certificate. If one is provided it must be valid.
 func (srv *TLSServer) Start() error {
 	logrus.Infof("TLSServer.Start: Starting TLS server on address: %s:%d", srv.address, srv.port)
 	srv.router = mux.NewRouter()
@@ -55,11 +55,11 @@ func (srv *TLSServer) Start() error {
 		logrus.Errorf("TLSServer.Start: Missing CA certificate %s", caCertPath)
 		return err
 	}
-	serverCertPath := path.Join(srv.certFolder, certsetup.ServerCertFile)
-	serverKeyPath := path.Join(srv.certFolder, certsetup.ServerKeyFile)
-	serverCertPEM, err := ioutil.ReadFile(serverCertPath)
-	serverKeyPEM, err2 := ioutil.ReadFile(serverKeyPath)
-	serverCert, err3 := tls.X509KeyPair(serverCertPEM, serverKeyPEM)
+	hubCertPath := path.Join(srv.certFolder, certsetup.HubCertFile)
+	hubKeyPath := path.Join(srv.certFolder, certsetup.HubKeyFile)
+	hubCertPEM, err := ioutil.ReadFile(hubCertPath)
+	hubKeyPEM, err2 := ioutil.ReadFile(hubKeyPath)
+	hubCert, err3 := tls.X509KeyPair(hubCertPEM, hubKeyPEM)
 	if err != nil || err2 != nil || err3 != nil {
 		logrus.Errorf("TLSServer.Start: Server certificate pair not found")
 		return err
@@ -72,7 +72,7 @@ func (srv *TLSServer) Start() error {
 	caCertPool.AppendCertsFromPEM(caCertPEM)
 
 	serverTLSConf := &tls.Config{
-		Certificates: []tls.Certificate{serverCert},
+		Certificates: []tls.Certificate{hubCert},
 		// ClientAuth: tls.RequireAnyClientCert, // Require CA signed cert
 		// ClientAuth: tls.RequestClientCert, //optional
 		ClientAuth: tls.VerifyClientCertIfGiven,

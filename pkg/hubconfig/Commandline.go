@@ -37,7 +37,7 @@ func SetHubCommandlineArgs(config *HubConfig) {
 
 	flag.StringVar(&config.CertsFolder, "certsFolder", config.CertsFolder, "Optional certificates directory for TLS")
 	flag.StringVar(&config.ConfigFolder, "configFolder", config.ConfigFolder, "Plugin configuration `folder`")
-	flag.StringVar(&config.Messenger.Address, "address", config.Messenger.Address, "Message bus hostname or address")
+	flag.StringVar(&config.Messenger.Address, "mqttAddress", config.Messenger.Address, "Message bus hostname or address")
 	flag.IntVar(&config.Messenger.ClientPortMqtt, "mqttPort", config.Messenger.ClientPortMqtt, "MQTT client port")
 	flag.IntVar(&config.Messenger.ClientPortWS, "wsPort", config.Messenger.ClientPortWS, "Websocket client port")
 	flag.StringVar(&config.Logging.LogFile, "logFile", config.Logging.LogFile, "Log to file")

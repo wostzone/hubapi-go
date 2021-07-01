@@ -14,21 +14,22 @@ import (
 	"math/big"
 	"net"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/wostzone/wostlib-go/pkg/signing"
 )
 
-// Standard client and server key/certificate filenames. All stored in PEM format.
+// Standard WoST client and server key/certificate filenames. All stored in PEM format.
 const (
 	CaCertFile     = "caCert.pem" // CA that signed the server and client certificates
 	CaKeyFile      = "caKey.pem"
-	ServerCertFile = "hubCert.pem"
-	ServerKeyFile  = "hubKey.pem"
-	ClientCertFile = "clientCert.pem"
-	ClientKeyFile  = "clientKey.pem"
+	HubCertFile    = "hubCert.pem"
+	HubKeyFile     = "hubKey.pem"
+	PluginCertFile = "pluginCert.pem"
+	PluginKeyFile  = "pluginKey.pem"
+	// ClientCertFile = "clientCert.pem"
+	// ClientKeyFile  = "clientKey.pem"
 )
 
 // Organization Unit for client authorization are stored in the client certificate OU field
@@ -54,6 +55,9 @@ const (
 	OUPlugin = "plugin"
 )
 
+// Plugin certificate ID
+const pluginClientID = "plugin"
+
 // const keySize = 2048 // 4096
 const caDefaultValidityDuration = time.Hour * 24 * 364 * 10 // 10 years
 const caTemporaryValidityDuration = time.Hour * 24 * 3      // 3 days
@@ -62,9 +66,11 @@ const DefaultCertDurationDays = 365
 const TempCertDurationDays = 1
 
 // CreateCertificateBundle is a convenience function to create the Hub CA, server and (plugin) client
-// certificates into the given folder. Intended for testing.
+// certificates into the given folder.
+// The names contain the hostnames and ip addresses that are valid for the hub.
 // This only creates missing certificates.
-func CreateCertificateBundle(hostname string, certFolder string) error {
+//  names contain the list of hostname and ip addresses the hub can be reached at. Used in hub cert.
+func CreateCertificateBundle(names []string, certFolder string) error {
 	var err error
 	// create the CA if needed
 	caCertPEM, _ := LoadPEM(certFolder, CaCertFile)
@@ -78,9 +84,9 @@ func CreateCertificateBundle(hostname string, certFolder string) error {
 		err = SaveCertToPEM(caCertPEM, certFolder, CaCertFile)
 	}
 
-	// create the Server cert if needed
-	serverCertPEM, _ := LoadPEM(certFolder, ServerCertFile)
-	serverKeyPEM, _ := LoadPEM(certFolder, ServerKeyFile)
+	// create the Hub server cert if needed
+	serverCertPEM, _ := LoadPEM(certFolder, HubCertFile)
+	serverKeyPEM, _ := LoadPEM(certFolder, HubKeyFile)
 	if serverCertPEM == "" || serverKeyPEM == "" {
 		serverKey := signing.CreateECDSAKeys()
 		serverKeyPEM, _ = signing.PrivateKeyToPEM(serverKey)
@@ -88,31 +94,32 @@ func CreateCertificateBundle(hostname string, certFolder string) error {
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle server public key failed: %s", err)
 		}
-		serverCertPEM, err = CreateHubCert(hostname, serverPubPEM, caCertPEM, caKeyPEM)
+		serverCertPEM, err = CreateHubCert(names, serverPubPEM, caCertPEM, caKeyPEM)
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle server failed: %s", err)
 		}
-		SaveKeyToPEM(serverKeyPEM, certFolder, ServerKeyFile)
-		SaveCertToPEM(serverCertPEM, certFolder, ServerCertFile)
+		SaveKeyToPEM(serverKeyPEM, certFolder, HubKeyFile)
+		SaveCertToPEM(serverCertPEM, certFolder, HubCertFile)
 	}
-	// create the Client cert if needed
-	clientCertPEM, _ := LoadPEM(certFolder, ClientCertFile)
-	clientKeyPEM, _ := LoadPEM(certFolder, ClientKeyFile)
-	if clientCertPEM == "" || clientKeyPEM == "" {
+	// create the Plugin certificate
+	pluginCertPEM, _ := LoadPEM(certFolder, PluginCertFile)
+	pluginKeyPEM, _ := LoadPEM(certFolder, PluginKeyFile)
+	if pluginCertPEM == "" || pluginKeyPEM == "" {
 
-		clientKey := signing.CreateECDSAKeys()
-		clientKeyPEM, _ = signing.PrivateKeyToPEM(clientKey)
-		clientPubKeyPEM, err := signing.PublicKeyToPEM(&clientKey.PublicKey)
+		pluginKey := signing.CreateECDSAKeys()
+		pluginKeyPEM, _ = signing.PrivateKeyToPEM(pluginKey)
+		pluginPubKeyPEM, err := signing.PublicKeyToPEM(&pluginKey.PublicKey)
 		if err != nil {
-			logrus.Fatalf("CreateCertificateBundle client failed: %s", err)
+			logrus.Fatalf("CreateCertificateBundle plugin cert failed: %s", err)
 		}
-		clientCertPEM, err = CreateClientCert(hostname, OUPlugin, clientPubKeyPEM,
+		// The plugin client cert uses the fixed common name 'plugin'
+		pluginCertPEM, err = CreateClientCert(pluginClientID, OUPlugin, pluginPubKeyPEM,
 			caCertPEM, caKeyPEM, time.Now(), DefaultCertDurationDays)
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle client failed: %s", err)
 		}
-		SaveKeyToPEM(clientKeyPEM, certFolder, ClientKeyFile)
-		SaveCertToPEM(clientCertPEM, certFolder, ClientCertFile)
+		SaveKeyToPEM(pluginKeyPEM, certFolder, PluginKeyFile)
+		SaveCertToPEM(pluginCertPEM, certFolder, PluginCertFile)
 	}
 	return nil
 }
@@ -220,11 +227,13 @@ func CreateHubCA() (certPEM string, keyPEM string) {
 }
 
 // CreateHubCert creates Wost server certificate
-//  hosts contains one or more DNS or IP addresses to add tot he certificate. Localhost is always added
+// The Hub certificate is valid for the given names (domain name and IP addresses).
+// This implies that the Hub must use a fixed IP. DNS names are not used for validation.
+//  names contains one or more domain names or IP addresses the Hub can be reached on, to add to the certificate
 //  pubKey is the Hub public key in PEM format
 //  caCertPEM is the CA to sign the server certificate
 // returns the signed Hub certificate in PEM format
-func CreateHubCert(hosts string, hubPublicKeyPEM string, caCertPEM string, caKeyPEM string) (certPEM string, err error) {
+func CreateHubCert(names []string, hubPublicKeyPEM string, caCertPEM string, caKeyPEM string) (certPEM string, err error) {
 	// We need the CA key and certificate
 	caPrivKey, err := signing.PrivateKeyFromPEM(caKeyPEM)
 	if err != nil {
@@ -258,11 +267,13 @@ func CreateHubCert(hosts string, hubPublicKeyPEM string, caCertPEM string, caKey
 		IsCA:           false,
 		MaxPathLenZero: true,
 		// BasicConstraintsValid: true,
-		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		// IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		IPAddresses: []net.IP{},
 	}
 	// determine the hosts for this hub
-	hostList := strings.Split(hosts, ",")
-	for _, h := range hostList {
+	// hostList := strings.Split(hosts, ",")
+	// for _, h := range hostList {
+	for _, h := range names {
 		if ip := net.ParseIP(h); ip != nil {
 			template.IPAddresses = append(template.IPAddresses, ip)
 		} else {

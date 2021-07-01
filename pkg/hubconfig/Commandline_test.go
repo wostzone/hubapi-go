@@ -36,7 +36,7 @@ func teardown() {
 func TestSetupHubCommandline(t *testing.T) {
 	setup()
 
-	myArgs := strings.Split("--address bob --logFile logfile.log --logLevel debug", " ")
+	myArgs := strings.Split("--mqttAddress bob --logFile logfile.log --logLevel debug", " ")
 	// Remove testing package created commandline and flags so we can test ours
 	// flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	os.Args = append(os.Args[0:1], myArgs...)
@@ -55,7 +55,7 @@ func TestSetupHubCommandline(t *testing.T) {
 
 func TestCommandlineWithError(t *testing.T) {
 	setup()
-	myArgs := strings.Split("--address bob --badarg=bad", " ")
+	myArgs := strings.Split("--mqttAddress bob --badarg=bad", " ")
 	// myArgs := strings.Split("--address bob", " ")
 	// Remove testing package created commandline and flags so we can test ours
 	// flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
@@ -73,7 +73,7 @@ func TestCommandlineWithError(t *testing.T) {
 func TestSetupHubCommandlineWithExtendedConfig(t *testing.T) {
 	setup()
 
-	myArgs := strings.Split("-c ./config/hub.yaml --home ../../test --address bob --extra value1", " ")
+	myArgs := strings.Split("-c ./config/hub.yaml --home ../../test --mqttAddress bob --extra value1", " ")
 	// Remove testing package commandline arguments so we can test ours
 	// flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	os.Args = append(os.Args[0:1], myArgs...)

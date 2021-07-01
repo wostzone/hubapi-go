@@ -1,11 +1,10 @@
-GOTEST=go test
 
 FORCE: help
 
 all: FORCE ## This is a library, nothing to build
 
 test: FORCE ## Run tests 
-		$(GOTEST) -v ./pkg/...
+	go test -failfast -v ./pkg/...
 
 clean: ## Clean distribution files
 	go clean

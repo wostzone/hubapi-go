@@ -101,14 +101,14 @@ func CreateMosquittoConf(port int, homeFolder string) string {
 //  mqttPort is the port to listen on, default (0) is 33100
 // Returns the mosquitto process
 func Setup(homeFolder string, mqttPort int) (mqCmd *exec.Cmd) {
-
+	hostnames := []string{"localhost"}
 	if mqttPort == 0 {
 		mqttPort = 33100 // must match hub.yaml
 	}
 	certsFolder := path.Join(homeFolder, "certs")
 	// configFolder := path.Join(homeFolder, "config")
 
-	certsetup.CreateCertificateBundle("localhost", certsFolder)
+	certsetup.CreateCertificateBundle(hostnames, certsFolder)
 
 	logrus.Infof("--- Starting mosquitto broker ---")
 	// mqCmd = Launch(mosqConfigPath)
