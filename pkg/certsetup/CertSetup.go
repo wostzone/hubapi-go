@@ -271,8 +271,7 @@ func CreateHubCert(names []string, hubPublicKeyPEM string, caCertPEM string, caK
 		IPAddresses: []net.IP{},
 	}
 	// determine the hosts for this hub
-	// hostList := strings.Split(hosts, ",")
-	// for _, h := range hostList {
+
 	for _, h := range names {
 		if ip := net.ParseIP(h); ip != nil {
 			template.IPAddresses = append(template.IPAddresses, ip)

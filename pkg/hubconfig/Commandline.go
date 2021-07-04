@@ -20,7 +20,7 @@ var flagsAreSet bool = false
 // -address      localhost            optional message bus address
 // -mqttPort     8883                 optional alternative mqtt port
 // -wsPort       8884                 optional alternative websocket port
-// -logFile      /path/to/hub.log optional logfile. Use to determine logs folder
+// -logFile      /path/to/hub.log     optional logfile. Use to determine logs folder
 // -logLevel warning                  for extra logging, default is hub loglevel
 //
 func SetHubCommandlineArgs(config *HubConfig) {

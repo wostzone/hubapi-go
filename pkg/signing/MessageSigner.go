@@ -40,7 +40,8 @@ type MessageSigner struct {
 // DecodeMessage decrypts the message and verifies the sender signature.
 // The sender and signer of the message is contained the message 'sender' field. If the
 // Sender field is missing then the 'address' field is used as sender.
-// object must hold the expected message type to decode the json message containging the sender info
+//  rawMessage contains the encryped and signed message
+//  object must hold the expected message type to decode the json message
 func (signer *MessageSigner) DecodeMessage(rawMessage string, object interface{}) (isEncrypted bool, isSigned bool, err error) {
 
 	dmessage, isEncrypted, err := DecryptMessage(rawMessage, signer.privateKey)
@@ -51,7 +52,8 @@ func (signer *MessageSigner) DecodeMessage(rawMessage string, object interface{}
 // VerifySignedMessage parses and verifies the message signature
 // as per standard, the sender and signer of the message is in the message 'Sender' field. If the
 // Sender field is missing then the 'address' field contains the publisher.
-//  or 'address' field
+//  rawMessage contains the signed message
+//  object must hold the expected message type to decode the json message
 func (signer *MessageSigner) VerifySignedMessage(rawMessage string, object interface{}) (isSigned bool, err error) {
 	isSigned, err = VerifySenderJWSSignature(rawMessage, object, signer.GetPublicKey)
 	return isSigned, err
