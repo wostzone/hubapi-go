@@ -50,11 +50,23 @@ func TestLoadHubConfig(t *testing.T) {
 
 	// configFile := path.Join(hc.ConfigFolder, "hub.yaml")
 	// err := hubconfig.LoadHubConfig(configFile, hc)
-	hc, err := hubconfig.LoadHubConfig(homeFolder)
+	hc, err := hubconfig.LoadHubConfig(homeFolder, "plugin1")
 	assert.NoError(t, err)
 	err = hubconfig.ValidateHubConfig(hc)
 	assert.NoError(t, err)
 	assert.Equal(t, "info", hc.Loglevel)
+}
+
+func TestSubstitute(t *testing.T) {
+	substMap := make(map[string]string, 0)
+	substMap["pluginID"] = "plugin1"
+	hc := hubconfig.HubConfig{}
+	wd, _ := os.Getwd()
+	templateFile := path.Join(wd, "../../test/config/hub-template.yaml")
+	err := hubconfig.LoadConfig(templateFile, &hc, substMap)
+	assert.NoError(t, err)
+	// from the template file
+	assert.Equal(t, "/var/log/plugin1.log", hc.LogFile)
 }
 
 func TestLoadHubConfigNotFound(t *testing.T) {
@@ -62,7 +74,7 @@ func TestLoadHubConfigNotFound(t *testing.T) {
 	hc := hubconfig.CreateDefaultHubConfig(path.Join(wd, "../../test"))
 	require.NotNil(t, hc)
 	configFile := path.Join(hc.ConfigFolder, "hub-notfound.yaml")
-	err := hubconfig.LoadConfig(configFile, hc)
+	err := hubconfig.LoadConfig(configFile, hc, nil)
 	assert.Error(t, err, "Configfile should not be found")
 }
 
@@ -72,7 +84,7 @@ func TestLoadHubConfigYamlError(t *testing.T) {
 	require.NotNil(t, hc)
 
 	configFile := path.Join(hc.ConfigFolder, "hub-bad.yaml")
-	err := hubconfig.LoadConfig(configFile, hc)
+	err := hubconfig.LoadConfig(configFile, hc, nil)
 	// Error should contain info on bad file
 	errTxt := err.Error()
 	assert.Equal(t, "yaml: line 12", errTxt[:13], "Expected line 12 to be bad")

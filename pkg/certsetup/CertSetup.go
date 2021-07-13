@@ -83,10 +83,11 @@ func CreateCertificateBundle(names []string, certFolder string) error {
 	caCertPEM, _ := LoadPEM(certFolder, CaCertFile)
 	caKeyPEM, _ := LoadPEM(certFolder, CaKeyFile)
 	if caCertPEM == "" || caKeyPEM == "" {
+		logrus.Warningf("CreateCertificateBundle Generating a CA certificate in %s as none was found", certFolder)
 		caCertPEM, caKeyPEM = CreateHubCA()
 		err = SaveKeyToPEM(caKeyPEM, certFolder, CaKeyFile)
 		if err != nil {
-			logrus.Fatalf("CreateCertificates CA failed writing. Unable to continue: %s", err)
+			logrus.Fatalf("CreateCertificateBundle CA failed writing. Unable to continue: %s", err)
 		}
 		err = SaveCertToPEM(caCertPEM, certFolder, CaCertFile)
 	}
@@ -95,6 +96,7 @@ func CreateCertificateBundle(names []string, certFolder string) error {
 	serverCertPEM, _ := LoadPEM(certFolder, HubCertFile)
 	serverKeyPEM, _ := LoadPEM(certFolder, HubKeyFile)
 	if serverCertPEM == "" || serverKeyPEM == "" || forceHubCert {
+		logrus.Infof("CreateCertificateBundle Refreshing Hub server certificate in %s", certFolder)
 		serverKey := signing.CreateECDSAKeys()
 		serverKeyPEM, _ = signing.PrivateKeyToPEM(serverKey)
 		serverPubPEM, err := signing.PublicKeyToPEM(&serverKey.PublicKey)
@@ -112,6 +114,7 @@ func CreateCertificateBundle(names []string, certFolder string) error {
 	pluginCertPEM, _ := LoadPEM(certFolder, PluginCertFile)
 	pluginKeyPEM, _ := LoadPEM(certFolder, PluginKeyFile)
 	if pluginCertPEM == "" || pluginKeyPEM == "" || forcePluginCert {
+		logrus.Infof("CreateCertificateBundle Refreshing plugin server certificate in %s", certFolder)
 
 		pluginKey := signing.CreateECDSAKeys()
 		pluginKeyPEM, _ = signing.PrivateKeyToPEM(pluginKey)

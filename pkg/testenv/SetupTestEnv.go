@@ -2,9 +2,7 @@
 package testenv
 
 import (
-	"bytes"
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -13,6 +11,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/wostzone/wostlib-go/pkg/certsetup"
+	"github.com/wostzone/wostlib-go/pkg/hubconfig"
 )
 
 const mosquittoConfigFile = "wost-mosquitto-test.conf"
@@ -54,18 +53,13 @@ certfile {{.homeFolder}}/certs/hubCert.pem
 
 // Createa mosquitto.conf file for testing
 func CreateMosquittoConf(port int, homeFolder string) string {
-	// shoot a mosquitto with a bazooka
-	var msg bytes.Buffer
-
 	params := map[string]string{
 		"homeFolder":   homeFolder,
 		"certPortMqtt": fmt.Sprint(port),
 		"unpwPortWS":   fmt.Sprint(port + 1), // FIXME, not like this :(
 	}
-	tpl, err := template.New("").Parse(mqConfigTemplate)
-	_ = err
-	tpl.Execute(&msg, params)
-	return msg.String()
+	conf := hubconfig.SubstituteText(mqConfigTemplate, params)
+	return conf
 	// return ""
 }
 

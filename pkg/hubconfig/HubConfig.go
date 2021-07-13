@@ -2,11 +2,13 @@
 package hubconfig
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
 	"path"
+	"text/template"
 
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -22,8 +24,8 @@ const HubLogFile = "hub.log"
 const DefaultCertsFolder = "./certs"
 
 // DefaultPort for MQTT or Websocket over TLS port
-const DefaultPortMqtt = 8883
-const DefaultPortWS = 8884
+const DefaultPortWS = 8883
+const DefaultPortMqtt = 8884
 
 type test interface {
 	hello()
@@ -38,19 +40,19 @@ type HubConfig struct {
 
 	// MQTT message bus configuration
 	MqttAddress    string `yaml:"mqttAddress,omitempty"`    // address with hostname or ip of the message bus
-	MqttCertPort   int    `yaml:"mqttCertPort,omitempty"`   // MQTT TLS port for certificate based authentication, default is 9883
-	MqttUnpwPortWS int    `yaml:"mqttUnpwPortWS,omitempty"` // Websocket TLS port for login/password authentication, default is 9884
+	MqttCertPort   int    `yaml:"mqttCertPort,omitempty"`   // MQTT TLS port for certificate based authentication
+	MqttUnpwPortWS int    `yaml:"mqttUnpwPortWS,omitempty"` // Websocket TLS port for login/password authentication
 	MqttTimeout    int    `yaml:"mqttTimeout,omitempty"`    // Client connection timeout in seconds. 0 for indefinite
 
 	// zoning
 	Zone string `yaml:"zone"` // zone this hub belongs to. Used as prefix in ThingID, default is local
 
 	// Folders
-	Home         string   `yaml:"home"`         // application home directory. Default is parent of executable.
-	CertsFolder  string   `yaml:"certsFolder"`  // Folder containing certificates, default is {home}/certs
-	ConfigFolder string   `yaml:"configFolder"` // location of configuration files. Default is ./config
-	PluginFolder string   `yaml:"pluginFolder"` // location of plugin binaries. Default is ./bin
-	Plugins      []string `yaml:"plugins"`      // names of plugins to start
+	Home         string `yaml:"home"`         // application home directory. Default is parent of executable.
+	CertsFolder  string `yaml:"certsFolder"`  // Folder containing certificates, default is {home}/certs
+	ConfigFolder string `yaml:"configFolder"` // location of configuration files. Default is ./config
+	// PluginFolder string   `yaml:"pluginFolder"` // location of plugin binaries. Default is ./bin
+	Plugins []string `yaml:"plugins"` // names of plugins to start
 	// internal
 }
 
@@ -80,8 +82,8 @@ func CreateDefaultHubConfig(homeFolder string) *HubConfig {
 		Home:         homeFolder,
 		ConfigFolder: path.Join(homeFolder, "config"),
 		Plugins:      make([]string, 0),
-		PluginFolder: path.Join(homeFolder, "./bin"),
-		Zone:         "local",
+		// PluginFolder: path.Join(homeFolder, "./bin"),
+		Zone: "local",
 	}
 	// config.Messenger.CertsFolder = path.Join(homeFolder, "certs")
 	config.CertsFolder = path.Join(homeFolder, DefaultCertsFolder)
@@ -119,18 +121,25 @@ func GetOutboundIP(destination string) net.IP {
 }
 
 // LoadConfig loads the configuration from file into the given config
+//  configFile path to yaml configuration file
+//  config interface to typed structure matching the config. Must have yaml tags
+//  substituteMap map to substitude {{.key}} with value from map, nil to ignore
 // Returns nil if successful
-func LoadConfig(configFile string, config interface{}) error {
+func LoadConfig(configFile string, config interface{}, substituteMap map[string]string) error {
 	var err error
 	var rawConfig []byte
 	rawConfig, err = ioutil.ReadFile(configFile)
 	if err != nil {
-		logrus.Warningf("Unable to load config file: %s", err)
+		logrus.Infof("Unable to load config file: %s", err)
 		return err
 	}
 	logrus.Infof("Loaded config file '%s'", configFile)
+	rawText := string(rawConfig)
+	if substituteMap != nil {
+		rawText = SubstituteText(rawText, substituteMap)
+	}
 
-	err = yaml.Unmarshal(rawConfig, config)
+	err = yaml.Unmarshal([]byte(rawText), config)
 	if err != nil {
 		logrus.Errorf("Error parsing config file '%s': %s", configFile, err)
 		return err
@@ -149,9 +158,13 @@ func LoadConfig(configFile string, config interface{}) error {
 //  - Commandline "--home" sets the home folder as the base of ./config, ./logs and ./bin directories
 //
 //  homeFolder overrides the default home folder. Leave empty to use parent of application binary.
+//  pluginID to substitute optional {{.pluginID}} in the hub.yaml file
 // The current working directory is changed to this folder
 //  Returns the hub configuration and error code in case of error
-func LoadHubConfig(homeFolder string) (*HubConfig, error) {
+func LoadHubConfig(homeFolder string, pluginID string) (*HubConfig, error) {
+	substituteMap := make(map[string]string)
+	substituteMap["pluginID"] = pluginID
+
 	args := os.Args[1:]
 	if homeFolder == "" {
 		// Option --home overrides the default home folder. Intended for testing.
@@ -186,7 +199,7 @@ func LoadHubConfig(homeFolder string) (*HubConfig, error) {
 		}
 	}
 	logrus.Infof("Using %s as hub config file", hubConfigFile)
-	err1 := LoadConfig(hubConfigFile, hubConfig)
+	err1 := LoadConfig(hubConfigFile, hubConfig, substituteMap)
 	if err1 != nil {
 		// panic("Unable to continue without hub.yaml")
 		return hubConfig, err1
@@ -196,14 +209,15 @@ func LoadHubConfig(homeFolder string) (*HubConfig, error) {
 	if !path.IsAbs(hubConfig.CertsFolder) {
 		hubConfig.CertsFolder = path.Join(homeFolder, hubConfig.CertsFolder)
 	}
-	if !path.IsAbs(hubConfig.PluginFolder) {
-		hubConfig.PluginFolder = path.Join(homeFolder, hubConfig.PluginFolder)
-	}
+	// if !path.IsAbs(hubConfig.PluginFolder) {
+	// 	hubConfig.PluginFolder = path.Join(homeFolder, hubConfig.PluginFolder)
+	// }
 
-	err2 := ValidateHubConfig(hubConfig)
-	if err2 != nil {
-		return hubConfig, err2
-	}
+	// disabled as invalid hub config should prevent providing help
+	//err2 := ValidateHubConfig(hubConfig)
+	// if err2 != nil {
+	// 	return hubConfig, err2
+	// }
 	return hubConfig, nil
 }
 
@@ -218,18 +232,31 @@ func LoadHubConfig(homeFolder string) (*HubConfig, error) {
 //  pluginName is the plugin instance name used to determine the config filename
 //  pluginConfig is the configuration to load. nil to only load the hub config.
 // Returns nil on success or error
-func LoadPluginConfig(configFolder string, pluginName string, pluginConfig interface{}) error {
+func LoadPluginConfig(configFolder string, pluginName string, pluginConfig interface{}, substituteMap map[string]string) error {
 
 	// plugin config is optional
 	if pluginName != "" && pluginConfig != nil {
 		pluginConfigFile := path.Join(configFolder, pluginName+".yaml")
-		err := LoadConfig(pluginConfigFile, pluginConfig)
+		err := LoadConfig(pluginConfigFile, pluginConfig, substituteMap)
 		if err != nil {
 			logrus.Infof("Plugin configuration file %s not found. Ignored", pluginConfigFile)
 		}
 	}
 
 	return nil
+}
+
+// Substitute template strings in the text
+//  text to substitude template strings, eg "hello {{.destination}}"
+//  substituteMap with replacement keywords, eg {"destination":"world"}
+// Returns text with template strings replaced
+func SubstituteText(text string, substituteMap map[string]string) string {
+	var msg bytes.Buffer
+
+	tpl, err := template.New("").Parse(text)
+	_ = err
+	tpl.Execute(&msg, substituteMap)
+	return msg.String()
 }
 
 // ValidateHubConfig checks if values in the hub configuration are correct
