@@ -36,7 +36,7 @@ func teardown() {
 func TestSetupHubCommandline(t *testing.T) {
 	setup()
 
-	myArgs := strings.Split("--mqttAddress bob --logFile logfile.log --logLevel debug", " ")
+	myArgs := strings.Split("--mqttAddress bob --logFolder logs --logLevel debug", " ")
 	// Remove testing package created commandline and flags so we can test ours
 	// flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	os.Args = append(os.Args[0:1], myArgs...)
@@ -48,7 +48,7 @@ func TestSetupHubCommandline(t *testing.T) {
 	flag.Parse()
 	// assert.NoError(t, err)
 	assert.Equal(t, "bob", hubConfig.MqttAddress)
-	assert.Equal(t, "logfile.log", hubConfig.LogFile)
+	assert.Equal(t, "logs", hubConfig.LogFolder)
 	assert.Equal(t, "debug", hubConfig.Loglevel)
 	// assert.Equal(t, "/etc/cert", hubConfig.Messenger.CertFolder)
 }
@@ -61,7 +61,7 @@ func TestCommandlineWithError(t *testing.T) {
 	// flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	os.Args = append(os.Args[0:1], myArgs...)
 
-	hubConfig, err := hubconfig.LoadCommandlineConfig(homeFolder, "", nil)
+	hubConfig, err := hubconfig.LoadCommandlineConfig(homeFolder, "plugin1", nil)
 	// hubConfig.ConfigFolder = path.Join(homeFolder, "test")
 
 	assert.Error(t, err, "Parse flag -badarg should fail")
@@ -86,7 +86,7 @@ func TestSetupHubCommandlineWithExtendedConfig(t *testing.T) {
 	flag.StringVar(&pluginConfig.ExtraVariable, "extra", "", "Extended extra configuration")
 
 	// err := hubconfig.ParseCommandline(myArgs, &config)
-	hubConfig, err := hubconfig.LoadCommandlineConfig("", "", pluginConfig)
+	hubConfig, err := hubconfig.LoadCommandlineConfig("", "plugin1", pluginConfig)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "bob", hubConfig.MqttAddress)
@@ -102,7 +102,7 @@ func TestSetupConfigBadConfigfile(t *testing.T) {
 	// flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	os.Args = append(os.Args[0:1], myArgs...)
 
-	hubConfig, err := hubconfig.LoadCommandlineConfig(homeFolder, "", nil)
+	hubConfig, err := hubconfig.LoadCommandlineConfig(homeFolder, "plugin1", nil)
 	assert.Error(t, err)
 	assert.Equal(t, "yaml: line 12", err.Error()[0:13], "Expected yaml parse error")
 	assert.NotNil(t, hubConfig)
@@ -116,7 +116,7 @@ func TestSetupConfigInvalidConfigfile(t *testing.T) {
 	// flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	os.Args = append(os.Args[0:1], myArgs...)
 
-	hubConfig, err := hubconfig.LoadCommandlineConfig(homeFolder, "", nil)
+	hubConfig, err := hubconfig.LoadCommandlineConfig(homeFolder, "plugin1", nil)
 	assert.Equal(t, "debug", hubConfig.Loglevel, "config file wasn't loaded")
 	assert.Error(t, err, "Expected validation of config to fail")
 	assert.NotNil(t, hubConfig)

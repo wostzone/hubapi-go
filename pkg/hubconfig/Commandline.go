@@ -2,6 +2,7 @@
 package hubconfig
 
 import (
+	"errors"
 	"flag"
 	"os"
 	"path"
@@ -31,8 +32,7 @@ func SetHubCommandlineArgs(config *HubConfig) {
 	flag.StringVar(&config.MqttAddress, "mqttAddress", config.MqttAddress, "Message bus hostname or address")
 	flag.IntVar(&config.MqttUnpwPortWS, "mqttUnpwPortWS", config.MqttUnpwPortWS, "Websocket TLS username/pw auth port")
 	flag.IntVar(&config.MqttCertPort, "mqttCertPort", config.MqttCertPort, "MQTT TLS Client certificate auth port")
-	flag.StringVar(&config.LogFile, "logFile", config.LogFile, "Log to file")
-	// flag.StringVar(&config.PluginFolder, "pluginFolder", config.PluginFolder, "Alternate plugin `folder`. Empty to not load plugins.")
+	flag.StringVar(&config.LogFolder, "logFolder", config.LogFolder, "Logging folder")
 	flag.StringVar(&config.Loglevel, "logLevel", config.Loglevel, "Loglevel: {error|`warning`|info|debug}")
 }
 
@@ -41,6 +41,11 @@ func SetHubCommandlineArgs(config *HubConfig) {
 // commandline.
 // Returns the hub configuration and error code in case of error
 func LoadCommandlineConfig(homeFolder string, pluginID string, pluginConfig interface{}) (*HubConfig, error) {
+	if pluginID == "" {
+		err := errors.New("LoadCommandlineConfig: Missing plugin/hub ID")
+		logrus.Fatalf("%s", err)
+		return nil, err
+	}
 	hubConfig, err := LoadHubConfig(homeFolder, pluginID)
 	if err != nil {
 		logrus.Errorf("LoadCommandlineConfig: Failed loading Hub configuration: %s", err)
@@ -68,12 +73,7 @@ func LoadCommandlineConfig(homeFolder string, pluginID string, pluginConfig inte
 	// os.Chdir(hubConfig.HomeFolder)
 
 	// Last set the hub/plugin logging
-	if pluginID != "" {
-		logFolder := path.Dir(hubConfig.LogFile)
-		logFileName := path.Join(logFolder, pluginID+".log")
-		SetLogging(hubConfig.Loglevel, logFileName)
-	} else if hubConfig.LogFile != "" {
-		SetLogging(hubConfig.Loglevel, hubConfig.LogFile)
-	}
+	logFileName := path.Join(hubConfig.LogFolder, pluginID+".log")
+	SetLogging(hubConfig.Loglevel, logFileName)
 	return hubConfig, err
 }

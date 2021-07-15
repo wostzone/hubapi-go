@@ -17,9 +17,6 @@ import (
 // HubConfigName the configuration file name of the hub
 const HubConfigName = "hub.yaml"
 
-// HubLogFile the file name of the hub logging
-const HubLogFile = "hub.log"
-
 // DefaultCertsFolder with the location of certificates
 const DefaultCertsFolder = "./certs"
 
@@ -35,25 +32,24 @@ type test interface {
 // Intended for hub plugins to provide hub services
 type HubConfig struct {
 	// logging
-	Loglevel string `yaml:"logLevel"` // debug, info, warning, error. Default is warning
-	LogFile  string `yaml:"logFile"`  // hub logging to file
+	Loglevel  string `yaml:"logLevel"`  // debug, info, warning, error. Default is warning
+	LogFolder string `yaml:"logFolder"` // location of Wost log files
+	// LogFile   string `yaml:"logFile"`   // log filename is pluginID.log
 
 	// MQTT message bus configuration
 	MqttAddress    string `yaml:"mqttAddress,omitempty"`    // address with hostname or ip of the message bus
 	MqttCertPort   int    `yaml:"mqttCertPort,omitempty"`   // MQTT TLS port for certificate based authentication
 	MqttUnpwPortWS int    `yaml:"mqttUnpwPortWS,omitempty"` // Websocket TLS port for login/password authentication
-	MqttTimeout    int    `yaml:"mqttTimeout,omitempty"`    // Client connection timeout in seconds. 0 for indefinite
+	MqttTimeout    int    `yaml:"mqttTimeout,omitempty"`    // plugin mqtt connection timeout in seconds. 0 for indefinite
 
 	// zoning
 	Zone string `yaml:"zone"` // zone this hub belongs to. Used as prefix in ThingID, default is local
 
 	// Folders
-	Home         string `yaml:"home"`         // application home directory. Default is parent of executable.
-	CertsFolder  string `yaml:"certsFolder"`  // Folder containing certificates, default is {home}/certs
-	ConfigFolder string `yaml:"configFolder"` // location of configuration files. Default is ./config
-	// PluginFolder string   `yaml:"pluginFolder"` // location of plugin binaries. Default is ./bin
-	Plugins []string `yaml:"plugins"` // names of plugins to start
-	// internal
+	Home         string   `yaml:"home"`         // application home directory. Default is parent of executable.
+	CertsFolder  string   `yaml:"certsFolder"`  // Folder containing certificates, default is {home}/certs
+	ConfigFolder string   `yaml:"configFolder"` // location of configuration files. Default is ./config
+	Plugins      []string `yaml:"plugins"`      // names of plugins to start
 }
 
 // ConfigArgs configuration commandline arguments
@@ -82,8 +78,7 @@ func CreateDefaultHubConfig(homeFolder string) *HubConfig {
 		Home:         homeFolder,
 		ConfigFolder: path.Join(homeFolder, "config"),
 		Plugins:      make([]string, 0),
-		// PluginFolder: path.Join(homeFolder, "./bin"),
-		Zone: "local",
+		Zone:         "local",
 	}
 	// config.Messenger.CertsFolder = path.Join(homeFolder, "certs")
 	config.CertsFolder = path.Join(homeFolder, DefaultCertsFolder)
@@ -95,8 +90,7 @@ func CreateDefaultHubConfig(homeFolder string) *HubConfig {
 	config.MqttCertPort = DefaultPortMqtt
 	config.MqttUnpwPortWS = DefaultPortWS
 	config.Loglevel = "warning"
-	// config.Logging.LogFile = path.Join(homeFolder, "logs/"+HubLogFile)
-	config.LogFile = path.Join(homeFolder, "./logs/"+HubLogFile)
+	config.LogFolder = path.Join(homeFolder, "logs")
 	return config
 }
 
@@ -271,9 +265,8 @@ func ValidateHubConfig(config *HubConfig) error {
 		return err
 	}
 
-	loggingFolder := path.Dir(config.LogFile)
-	if _, err := os.Stat(loggingFolder); os.IsNotExist(err) {
-		logrus.Errorf("Logging folder '%s' not found\n", loggingFolder)
+	if _, err := os.Stat(config.LogFolder); os.IsNotExist(err) {
+		logrus.Errorf("Logging folder '%s' not found\n", config.LogFolder)
 		return err
 	}
 
