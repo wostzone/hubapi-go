@@ -55,6 +55,10 @@ const (
 	OUPlugin = "plugin"
 )
 
+// Certificate organization name
+const CertOrgName = "WoST"
+const CertOrgLocality = "WoST zone"
+
 // Plugin certificate ID
 const pluginClientID = "plugin"
 
@@ -167,8 +171,8 @@ func CreateClientCert(clientID string, ou string, clientPubKeyPEM, caCertPEM str
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(2021),
 		Subject: pkix.Name{
-			Organization:       []string{"WoST"},
-			Locality:           []string{"WoST Zone"},
+			Organization:       []string{CertOrgName},
+			Locality:           []string{CertOrgLocality},
 			CommonName:         clientID,
 			OrganizationalUnit: []string{ou},
 			Names:              make([]pkix.AttributeTypeAndValue, 0),
@@ -202,9 +206,9 @@ func CreateHubCA() (certPEM string, keyPEM string) {
 		SerialNumber: big.NewInt(2021),
 		Subject: pkix.Name{
 			Country:      []string{"CA"},
-			Organization: []string{"WoST"},
+			Organization: []string{CertOrgName},
 			Province:     []string{"BC"},
-			Locality:     []string{"WoST Zone"},
+			Locality:     []string{CertOrgLocality},
 			CommonName:   "WoST CA",
 		},
 		NotBefore: time.Now().Add(-10 * time.Second),
@@ -262,10 +266,10 @@ func CreateHubCert(names []string, hubPublicKeyPEM string, caCertPEM string, caK
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(2021),
 		Subject: pkix.Name{
-			Organization: []string{"WoST"},
+			Organization: []string{CertOrgName},
 			Country:      []string{"CA"},
 			Province:     []string{"BC"},
-			Locality:     []string{"WoST Zone"},
+			Locality:     []string{CertOrgLocality},
 			CommonName:   "WoST Hub",
 		},
 		NotBefore: time.Now(),
@@ -331,7 +335,7 @@ func LoadOrCreateCertKey(certFolder string, keyFile string) (*ecdsa.PrivateKey, 
 	pkPath := path.Join(certFolder, keyFile)
 	privKey, err := signing.LoadPrivateKeyFromPEM(pkPath)
 
-	if privKey == nil {
+	if err != nil {
 		privKey = signing.CreateECDSAKeys()
 		err = signing.SavePrivateKeyToPEM(privKey, pkPath)
 		if err != nil {
