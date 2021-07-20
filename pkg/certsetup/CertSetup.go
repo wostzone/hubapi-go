@@ -10,6 +10,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"math/big"
 	"net"
@@ -346,11 +347,16 @@ func LoadOrCreateCertKey(certFolder string, keyFile string) (*ecdsa.PrivateKey, 
 	return privKey, nil
 }
 
-// LoadPEM loads PEM file from certificate folder
+// LoadPEM loads and verifies a PEM file from certificate folder
 // Return loaded PEM file as string
-func LoadPEM(certFolder string, fileName string) (pem string, err error) {
-	pemPath := path.Join(certFolder, fileName)
+func LoadPEM(certFolder string, filename string) (pemString string, err error) {
+	pemPath := path.Join(certFolder, filename)
 	pemData, err := ioutil.ReadFile(pemPath)
+	// test
+	block, _ := pem.Decode(pemData)
+	if block == nil {
+		return string(pemData), fmt.Errorf("file '%s' is not a valid PEM file", pemPath)
+	}
 	return string(pemData), err
 }
 

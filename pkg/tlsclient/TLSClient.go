@@ -76,7 +76,7 @@ func GetOutboundInterface(address string) (interfaceName string, macAddress stri
 	}
 	// netInterface, err = net.InterfaceByName(interfaceName)
 	// macAddress = netInterface.HardwareAddr
-	fmt.Println("MAC: ", macAddress)
+	// fmt.Println("MAC: ", macAddress)
 	return
 }
 
