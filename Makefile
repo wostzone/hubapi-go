@@ -7,8 +7,8 @@ test: FORCE ## Run tests
 	go test -failfast -v ./pkg/...
 
 clean: ## Clean distribution files
-	go clean
 	go mod tidy
+	go clean
 	rm -f test/certs/*
 	rm -f test/logs/*
 
