@@ -142,7 +142,7 @@ func (cl *TLSClient) ConnectWithLoginID(loginID string, secret string, authMetho
 	var err error
 	cl.userID = loginID
 	cl.secret = secret
-	authMethod := AuthMethodNone
+	authMethod := AuthMethodJwt
 	if len(authMethodOpt) > 0 {
 		authMethod = authMethodOpt[0]
 	}
@@ -322,7 +322,7 @@ func NewTLSClient(address string, port uint, caCertPath string) (*TLSClient, err
 	cl := &TLSClient{
 		address:         address,
 		port:            port,
-		timeout:         time.Second,
+		timeout:         time.Second * 10,
 		caCertPool:      caCertPool,
 		checkServerCert: checkServerCert,
 		jwtLoginPath:    DefaultJWTLoginPath,
