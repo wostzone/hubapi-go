@@ -3,6 +3,7 @@ package discovery
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/grandcat/zeroconf"
@@ -15,6 +16,8 @@ import (
 //  serviceType to look for, or "" to discover all service types (not all services)
 func DnsSDScan(sdType string, waitSec int) ([]*zeroconf.ServiceEntry, error) {
 	sdDomain := "local."
+	mu := &sync.Mutex{}
+
 	if sdType == "" {
 		// https://github.com/grandcat/zeroconf/pull/15
 		sdType = "_services._dns-sd._udp"
@@ -26,14 +29,16 @@ func DnsSDScan(sdType string, waitSec int) ([]*zeroconf.ServiceEntry, error) {
 		return nil, err
 	}
 
-	// 'entries' channel captures the result
+	// 'records' channel captures the result
 	entries := make(chan *zeroconf.ServiceEntry)
 	go func(results <-chan *zeroconf.ServiceEntry) {
 		for entry := range results {
 			rec := entry.ServiceRecord
 			logrus.Infof("DnsSDScan: Found service instance '%s' of type '%s', domain '%s'. ip4:port=%s:%d",
 				rec.Instance, rec.ServiceName(), rec.Domain, entry.AddrIPv4, entry.Port)
+			mu.Lock()
 			records = append(records, entry)
+			mu.Unlock()
 		}
 		logrus.Infof("DnsSDScan: No more entries.")
 	}(entries)
@@ -47,5 +52,9 @@ func DnsSDScan(sdType string, waitSec int) ([]*zeroconf.ServiceEntry, error) {
 		logrus.Fatalf("DnsSDScan: Failed to browse: %s", err.Error())
 	}
 	<-ctx.Done()
-	return records, err
+	mu.Lock()
+	results := records
+	mu.Unlock()
+
+	return results, err
 }

@@ -44,7 +44,9 @@ type MqttHubClient struct {
 // Close the client connection
 func (client *MqttHubClient) Close() {
 	logrus.Warningf("MqttHubClient.Close")
-	client.mqttClient.Close()
+	if client.mqttClient != nil {
+		client.mqttClient.Close()
+	}
 }
 
 // Connect the client connection

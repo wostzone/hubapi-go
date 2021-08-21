@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -96,19 +97,24 @@ func (srv *TLSServer) Start() error {
 		Handler:   srv.router,
 		TLSConfig: serverTLSConf,
 	}
-
+	// mutex to capture error result in case startup in the background failed
+	mu := sync.Mutex{}
 	go func() {
 		// serverTLSConf contains certificate and key
 		err2 := srv.httpServer.ListenAndServeTLS("", "")
 		if err2 != nil && err2 != http.ErrServerClosed {
+			mu.Lock()
 			err = fmt.Errorf("TLSServer.Start: ListenAndServeTLS: %s", err2)
+			mu.Unlock()
 			logrus.Error(err)
 		}
 	}()
 	// Make sure the server is listening before continuing
-	// Not pretty but it handles it
 	time.Sleep(time.Second)
-	return err
+	mu.Lock()
+	result := err
+	mu.Unlock()
+	return result
 }
 
 // Stop the TLS server and close all connections
