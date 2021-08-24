@@ -103,7 +103,7 @@ func TestLoadHubConfigBadFolders(t *testing.T) {
 	err = hubconfig.ValidateHubConfig(&gc2)
 	assert.Error(t, err)
 	gc2 = *hc
-	gc2.LogFolder = "/this/path/doesntexist"
+	gc2.LogsFolder = "/this/path/doesntexist"
 	err = hubconfig.ValidateHubConfig(&gc2)
 	assert.Error(t, err)
 	gc2 = *hc

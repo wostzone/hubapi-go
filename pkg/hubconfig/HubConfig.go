@@ -26,22 +26,24 @@ const DefaultConfigFolder = "./config"
 const DefaultLogsFolder = "./logs"
 
 // DefaultPort for MQTT or Websocket over TLS port
-const DefaultPortWS = 8883
-const DefaultPortMqtt = 8884
+const DefaultMqttPortUnpw = 8883
+const DefaultMqttPortCert = 8884
+const DefaultMqttPortWS = 9001
 
 // HubConfig with hub configuration parameters
 // Intended for hub plugins to provide hub services
 type HubConfig struct {
 	// logging
-	Loglevel  string `yaml:"logLevel"`  // debug, info, warning, error. Default is warning
-	LogFolder string `yaml:"logFolder"` // location of Wost log files
+	Loglevel   string `yaml:"logLevel"`   // debug, info, warning, error. Default is warning
+	LogsFolder string `yaml:"logsFolder"` // location of Wost log files
 	// LogFile   string `yaml:"logFile"`   // log filename is pluginID.log
 
 	// MQTT message bus configuration
-	MqttAddress    string `yaml:"mqttAddress,omitempty"`    // address with hostname or ip of the message bus
-	MqttCertPort   int    `yaml:"mqttCertPort,omitempty"`   // MQTT TLS port for certificate based authentication
-	MqttUnpwPortWS int    `yaml:"mqttUnpwPortWS,omitempty"` // Websocket TLS port for login/password authentication
-	MqttTimeout    int    `yaml:"mqttTimeout,omitempty"`    // plugin mqtt connection timeout in seconds. 0 for indefinite
+	MqttAddress  string `yaml:"mqttAddress,omitempty"`  // address with hostname or ip of the message bus
+	MqttPortCert int    `yaml:"mqttPortCert,omitempty"` // MQTT TLS port for certificate based authentication
+	MqttPortUnpw int    `yaml:"mqttPortUnpw,omitempty"` // MQTT TLS port for login/password authentication
+	MqttPortWS   int    `yaml:"mqttPortWS,omitempty"`   // Websocket TLS port for login/password authentication
+	MqttTimeout  int    `yaml:"mqttTimeout,omitempty"`  // plugin mqtt connection timeout in seconds. 0 for indefinite
 
 	// zoning
 	Zone string `yaml:"zone"` // zone this hub belongs to. Used as prefix in ThingID, default is local
@@ -87,10 +89,11 @@ func CreateDefaultHubConfig(homeFolder string) *HubConfig {
 	// config.Messenger.ClientCertFile = certsetup.ClientCertFile
 	// config.Messenger.ClientKeyFile = certsetup.ClientKeyFile
 	config.MqttAddress = hubnet.GetOutboundIP("").String()
-	config.MqttCertPort = DefaultPortMqtt
-	config.MqttUnpwPortWS = DefaultPortWS
+	config.MqttPortCert = DefaultMqttPortCert
+	config.MqttPortUnpw = DefaultMqttPortUnpw
+	config.MqttPortWS = DefaultMqttPortWS
 	config.Loglevel = "warning"
-	config.LogFolder = path.Join(homeFolder, "logs")
+	config.LogsFolder = path.Join(homeFolder, "logs")
 	return config
 }
 
@@ -150,7 +153,7 @@ func LoadHubConfig(configFile string, homeFolder string, pluginID string) (*HubC
 
 	substituteMap["home"] = hubConfig.Home
 	substituteMap["config"] = hubConfig.ConfigFolder
-	substituteMap["logs"] = hubConfig.LogFolder
+	substituteMap["logs"] = hubConfig.LogsFolder
 	substituteMap["certs"] = hubConfig.CertsFolder
 
 	if configFile == "" {
@@ -228,8 +231,8 @@ func ValidateHubConfig(config *HubConfig) error {
 		return err
 	}
 
-	if _, err := os.Stat(config.LogFolder); os.IsNotExist(err) {
-		logrus.Errorf("Logging folder '%s' not found\n", config.LogFolder)
+	if _, err := os.Stat(config.LogsFolder); os.IsNotExist(err) {
+		logrus.Errorf("Logging folder '%s' not found\n", config.LogsFolder)
 		return err
 	}
 

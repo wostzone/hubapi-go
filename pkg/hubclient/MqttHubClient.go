@@ -281,7 +281,7 @@ func NewMqttHubPluginClient(pluginID string, hubConfig *hubconfig.HubConfig) *Mq
 	caCertPath := path.Join(hubConfig.CertsFolder, certsetup.CaCertFile)
 	pluginCertPath := path.Join(hubConfig.CertsFolder, certsetup.PluginCertFile)
 	pluginKeyPath := path.Join(hubConfig.CertsFolder, certsetup.PluginKeyFile)
-	hostPort := fmt.Sprintf("%s:%d", hubConfig.MqttAddress, hubConfig.MqttCertPort)
+	hostPort := fmt.Sprintf("%s:%d", hubConfig.MqttAddress, hubConfig.MqttPortCert)
 	client := &MqttHubClient{
 		clientCertFile: pluginCertPath,
 		clientKeyFile:  pluginKeyPath,

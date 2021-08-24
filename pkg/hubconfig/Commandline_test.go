@@ -34,7 +34,7 @@ func teardown() {
 func TestSetupHubCommandline(t *testing.T) {
 	setup()
 
-	myArgs := strings.Split("--mqttAddress bob --logFolder logs --logLevel debug", " ")
+	myArgs := strings.Split("--mqttAddress bob --logsFolder logs --logLevel debug", " ")
 	// Remove testing package created commandline and flags so we can test ours
 	// flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	os.Args = append(os.Args[0:1], myArgs...)
@@ -46,7 +46,7 @@ func TestSetupHubCommandline(t *testing.T) {
 	flag.Parse()
 	// assert.NoError(t, err)
 	assert.Equal(t, "bob", hubConfig.MqttAddress)
-	assert.Equal(t, "logs", hubConfig.LogFolder)
+	assert.Equal(t, "logs", hubConfig.LogsFolder)
 	assert.Equal(t, "debug", hubConfig.Loglevel)
 	// assert.Equal(t, "/etc/cert", hubConfig.Messenger.CertFolder)
 }

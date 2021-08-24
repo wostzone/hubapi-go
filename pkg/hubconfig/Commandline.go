@@ -17,9 +17,10 @@ import (
 //  -certsFolder  /path/to/alt/certs   optional certificate folder, eg when using mqtt. Default is {home}/certs
 //  -configFolder /path/to/alt/config  optional alternative config, eg /etc/wost
 //  -address      localhost            optional message bus address
-//  -certPortMqtt 9883                 mqtt port for certificate authentication
-//  -unpwPortWS   9884                 websocket port for username/password authentication
-//  -logFile      /path/to/plugin.log  optional logfile override
+//  -mqttPortUnpw 9883                 mqtt port for username/password authentication
+//  -mqttPortCert 9884                 mqtt port for certificate authentication
+//  -mqttPortWS   9001                 websocket port for username/password authentication
+//  -logsFolder  /path/to/folder       optional logfile location
 //  -logLevel warning                  for extra logging, default is hub loglevel
 //
 func SetHubCommandlineArgs(config *HubConfig) {
@@ -30,9 +31,10 @@ func SetHubCommandlineArgs(config *HubConfig) {
 	flag.StringVar(&config.CertsFolder, "certsFolder", config.CertsFolder, "Optional certificates directory for TLS")
 	flag.StringVar(&config.ConfigFolder, "configFolder", config.ConfigFolder, "Plugin configuration `folder`")
 	flag.StringVar(&config.MqttAddress, "mqttAddress", config.MqttAddress, "Message bus hostname or address")
-	flag.IntVar(&config.MqttUnpwPortWS, "mqttUnpwPortWS", config.MqttUnpwPortWS, "Websocket TLS username/pw auth port")
-	flag.IntVar(&config.MqttCertPort, "mqttCertPort", config.MqttCertPort, "MQTT TLS Client certificate auth port")
-	flag.StringVar(&config.LogFolder, "logFolder", config.LogFolder, "Logging folder")
+	flag.IntVar(&config.MqttPortWS, "mqttPortWS", config.MqttPortWS, "Websocket TLS username/pw auth port")
+	flag.IntVar(&config.MqttPortUnpw, "mqttPortUnpw", config.MqttPortUnpw, "MQTT TLS with username/pw auth port")
+	flag.IntVar(&config.MqttPortCert, "mqttPortCert", config.MqttPortCert, "MQTT TLS Client certificate auth port")
+	flag.StringVar(&config.LogsFolder, "logsFolder", config.LogsFolder, "Logging folder")
 	flag.StringVar(&config.Loglevel, "logLevel", config.Loglevel, "Loglevel: {error|`warning`|info|debug}")
 }
 
@@ -101,7 +103,7 @@ func LoadCommandlineConfig(homeFolder string, pluginID string, pluginConfig inte
 	// os.Chdir(hubConfig.HomeFolder)
 
 	// Last set the hub/plugin logging
-	logFileName := path.Join(hubConfig.LogFolder, pluginID+".log")
+	logFileName := path.Join(hubConfig.LogsFolder, pluginID+".log")
 	SetLogging(hubConfig.Loglevel, logFileName)
 	return hubConfig, err
 }

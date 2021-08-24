@@ -3,7 +3,8 @@
 # Message bus server
 #mqttAddress: "localhost" // default is outbound ip
 mqttPortCert: 33100 # certificate based auth over MQTT/TLS
-mqttUnpwPortWS: 33101 # username password auth over WebSocket/TLS
+mqttPortUnpw: 33101 # certificate based auth over MQTT/TLS
+mqttPortWS: 33102 # username password auth over WebSocket/TLS
 mqttTimeout: 1
 
 # Logging

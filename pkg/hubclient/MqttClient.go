@@ -68,9 +68,12 @@ func (mqttClient *MqttClient) Connect(username string, password string, clientCe
 		mqttClient.pahoClient.Disconnect(1000 * DefaultTimeoutSec)
 	}
 
-	// tls://host:8883, tcps://awshost:8883/mqtt, or wss://host:8884/
+	// TODO: select TLS with unpw
+	// tls://host:8883, tls://host:8884, tcps://awshost:8883/mqtt, or wss://host:9001/
 	brokerURL := fmt.Sprintf("tls://%s/", mqttClient.hostPort)
 	if clientCert == nil {
+		// FIXME, restore this after test
+		// brokerURL = fmt.Sprintf("wss://%s/", mqttClient.hostPort)
 		brokerURL = fmt.Sprintf("wss://%s/", mqttClient.hostPort)
 	}
 	opts := pahomqtt.NewClientOptions()
@@ -120,14 +123,11 @@ func (mqttClient *MqttClient) Connect(username string, password string, clientCe
 	if clientCert != nil {
 		tlsConfig.Certificates = []tls.Certificate{*clientCert}
 	}
+	//
+	opts.Username = username
 	if password != "" {
-		opts.Username = username
 		opts.Password = password
 	}
-	// testing, remove when done
-	// if password == "" {
-	// 	opts.Password = userName
-	// }
 	opts.SetTLSConfig(tlsConfig)
 
 	logrus.Infof("MqttClient.Connect: Connecting to MQTT server: %s with clientID=%s, username=%s, client-certificate: %v",

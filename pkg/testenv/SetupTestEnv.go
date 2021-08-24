@@ -25,10 +25,13 @@ log_dest stdout
 persistence false
 #acl_file {{.homeFolder}}/config/mosquitto.acl
 
+# mqttPortCert: 33100 # certificate based auth over MQTT/TLS
+# mqttPortUnpw: 33101 # certificate based auth over MQTT/TLS
+# mqttPortWS: 33102 # username password auth over WebSocket/TLS
 
 #--- plugins and devices use certificates with MQTT
 # MQTT over TLS/SSL
-listener {{.certPortMqtt}}
+listener {{.mqttPortCert}}
 require_certificate true
 tls_version tlsv1.2
 cafile {{.homeFolder}}/certs/caCert.pem
@@ -37,7 +40,7 @@ certfile {{.homeFolder}}/certs/hubCert.pem
 
 
 #--- consumers use username/pw with WebSockets over TLS/SSL
-listener {{.unpwPortWS}}
+listener {{.mqttPortWS}}
 protocol websockets
 require_certificate false
 tls_version tlsv1.2
@@ -51,11 +54,11 @@ allow_anonymous true
 `
 
 // Createa mosquitto.conf file for testing
-func CreateMosquittoConf(port int, homeFolder string) string {
+func CreateMosquittoConf(certPort int, wsPort int, homeFolder string) string {
 	params := map[string]string{
 		"homeFolder":   homeFolder,
-		"certPortMqtt": fmt.Sprint(port),
-		"unpwPortWS":   fmt.Sprint(port + 1), // FIXME, not like this :(
+		"mqttPortCert": fmt.Sprint(certPort),
+		"mqttPortWS":   fmt.Sprint(wsPort), // FIXME, not like this :(
 	}
 	conf := hubconfig.SubstituteText(mqConfigTemplate, params)
 	return conf
@@ -70,11 +73,11 @@ func CreateMosquittoConf(port int, homeFolder string) string {
 //
 // Run TeardownTestEnv() to end the mosquitto broker
 //  homeFolder is the home directory to run from
-//  mqttPort is the port to listen on (required)
+//  mqttPortCert is the port to listen on (required)
 // Returns the mosquitto process
-func Setup(homeFolder string, mqttPort int) (mqCmd *exec.Cmd) {
+func Setup(homeFolder string, mqttPortCert int, mqttPortWs int) (mqCmd *exec.Cmd) {
 	hostnames := []string{"localhost"}
-	if mqttPort == 0 {
+	if mqttPortCert == 0 {
 		logrus.Panic("Missing mqtt port in test environment Setup")
 		// mqttPort = 33100 // must match hub.yaml
 		os.Exit(1)
@@ -86,7 +89,7 @@ func Setup(homeFolder string, mqttPort int) (mqCmd *exec.Cmd) {
 	// mqCmd = Launch(mosqConfigPath)
 
 	// mosquitto must be in the path to execute
-	mosqConf := CreateMosquittoConf(mqttPort, homeFolder)
+	mosqConf := CreateMosquittoConf(mqttPortCert, mqttPortWs, homeFolder)
 	mosqConfigPath := path.Join("/tmp", mosquittoConfigFile)
 	err := ioutil.WriteFile(mosqConfigPath, []byte(mosqConf), 0644)
 	if err != nil {

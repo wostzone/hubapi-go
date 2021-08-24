@@ -33,7 +33,7 @@ func TestPublishAction(t *testing.T) {
 	// certificate is for localhost
 	// FIXME, this should match the constnat in MqttClient_test.go
 	hubConfig.MqttAddress = "localhost"
-	hubConfig.MqttCertPort = 33100
+	hubConfig.MqttPortCert = 33100
 	consumerClient := hubclient.NewMqttHubPluginClient("plugin1", hubConfig)
 
 	deviceClient := hubclient.NewMqttHubDeviceClient(deviceID, mqttAddress,
