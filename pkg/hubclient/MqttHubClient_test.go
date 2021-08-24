@@ -211,7 +211,7 @@ func TestSubscribeAll(t *testing.T) {
 	deviceID := "thing1"
 	thingID := td.CreateThingID(zone, deviceID, vocab.DeviceTypeSensor)
 	td1 := td.CreateTD(thingID, vocab.DeviceTypeSensor)
-	txTd, _ := json.Marshal(td1)
+	txTd, _ := json.MarshalIndent(td1, "  ", "  ")
 	var rxTd []byte
 	var rxThing string
 

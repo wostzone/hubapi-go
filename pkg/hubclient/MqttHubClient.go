@@ -34,8 +34,9 @@ type MqttHubClient struct {
 	clientCertFile string
 	clientKeyFile  string
 	// authentication using username/password
-	userName string
-	password string
+	userName   string
+	password   string
+	jsonIndent string // json formatting indentation if set > 0
 	//
 	mqttClient *MqttClient
 	// senderVerification bool
@@ -61,26 +62,35 @@ func (client *MqttHubClient) Connect() error {
 	}
 }
 
+// publish marshals an object into json and publishes it to the given topic
+// If client.jsonIndent is set then the message is formatted nicely for humans
+func (client *MqttHubClient) publish(topic string, object interface{}) error {
+	var jsonText []byte
+	var err error
+	if client.jsonIndent != "" {
+		jsonText, err = json.MarshalIndent(object, client.jsonIndent, client.jsonIndent)
+	} else {
+		jsonText, err = json.Marshal(object)
+	}
+	if err != nil {
+		return err
+	}
+	err = client.mqttClient.Publish(topic, jsonText)
+	return err
+}
+
 // PublishAction publish a Thing action request to the Hub
 func (client *MqttHubClient) PublishAction(thingID string, name string, params map[string]interface{}) error {
 	topic := strings.ReplaceAll(TopicAction, "{id}", thingID)
 	actions := map[string]interface{}{name: params}
-	message, err := json.Marshal(actions)
-	if err != nil {
-		return err
-	}
-	err = client.mqttClient.Publish(topic, message)
+	err := client.publish(topic, actions)
 	return err
 }
 
 // PublishConfig publish a Thing configuration request to the Hub
 func (client *MqttHubClient) PublishConfigRequest(thingID string, values map[string]interface{}) error {
 	topic := strings.ReplaceAll(TopicSetConfig, "{id}", thingID)
-	message, err := json.Marshal(values)
-	if err != nil {
-		return err
-	}
-	err = client.mqttClient.Publish(topic, message)
+	err := client.publish(topic, values)
 	return err
 }
 
@@ -88,8 +98,7 @@ func (client *MqttHubClient) PublishConfigRequest(thingID string, values map[str
 // Intended to by used by a Thing
 func (client *MqttHubClient) PublishEvent(thingID string, event map[string]interface{}) error {
 	topic := strings.ReplaceAll(TopicThingEvent, "{id}", thingID)
-	message, _ := json.Marshal(event)
-	err := client.mqttClient.Publish(topic, message)
+	err := client.publish(topic, event)
 	return err
 }
 
@@ -97,8 +106,7 @@ func (client *MqttHubClient) PublishEvent(thingID string, event map[string]inter
 // Intended to by used by a Thing to publish updates of property values
 func (client *MqttHubClient) PublishPropertyValues(thingID string, values map[string]interface{}) error {
 	topic := strings.ReplaceAll(TopicThingPropertyValues, "{id}", thingID)
-	message, _ := json.Marshal(values)
-	err := client.mqttClient.Publish(topic, message)
+	err := client.publish(topic, values)
 	return err
 }
 
@@ -106,9 +114,15 @@ func (client *MqttHubClient) PublishPropertyValues(thingID string, values map[st
 // Intended to by used by a Thing to publish an update to its TD
 func (client *MqttHubClient) PublishTD(thingID string, td map[string]interface{}) error {
 	topic := strings.ReplaceAll(TopicThingTD, "{id}", thingID)
-	message, _ := json.Marshal(td)
-	err := client.mqttClient.Publish(topic, message)
+	err := client.publish(topic, td)
 	return err
+}
+
+// SetInden sets the indentation formatting of published messages
+// intended for testing to view raw messages in a more human friendly presentation
+//  indent is the indentation string, use "" to clear
+func (client *MqttHubClient) SetIndent(indent string) {
+	client.jsonIndent = indent
 }
 
 // Subscribe subscribes to messages from Things
@@ -268,6 +282,7 @@ func NewMqttHubClient(hostPort string, caCertFile string, userName string, passw
 		mqttClient: NewMqttClient(hostPort, caCertFile, DefaultTimeoutSec),
 		userName:   userName,
 		password:   password,
+		jsonIndent: "  ",
 	}
 	return client
 }
@@ -287,6 +302,7 @@ func NewMqttHubPluginClient(pluginID string, hubConfig *hubconfig.HubConfig) *Mq
 		clientKeyFile:  pluginKeyPath,
 		userName:       pluginID,
 		mqttClient:     NewMqttClient(hostPort, caCertPath, hubConfig.MqttTimeout),
+		jsonIndent:     "  ",
 	}
 	return client
 }
@@ -306,6 +322,7 @@ func NewMqttHubDeviceClient(deviceID string, hostPort string,
 		clientKeyFile:  deviceKeyFile,
 		userName:       deviceID,
 		mqttClient:     NewMqttClient(hostPort, caCertFile, DefaultTimeoutSec),
+		jsonIndent:     "  ",
 	}
 	return client
 }
