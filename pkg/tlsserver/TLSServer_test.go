@@ -85,7 +85,7 @@ func TestHandlerNoAuth(t *testing.T) {
 		serverCertPath, serverKeyPath, caCertPath, nil)
 
 	// handler can be added any time
-	srv.AddHandler(path1, func(http.ResponseWriter, *http.Request) {
+	srv.AddHandler(path1, func(string, http.ResponseWriter, *http.Request) {
 		logrus.Infof("TestAuthCert: path1 hit")
 		path1Hit++
 	})
@@ -111,14 +111,14 @@ func TestNoAuth(t *testing.T) {
 	// setup server and client environment
 	srv := tlsserver.NewTLSServer(testAddress, testPort,
 		serverCertPath, serverKeyPath, caCertPath,
-		func(userID, password string) error {
+		func(userID string, password string) bool {
 			assert.Fail(t, "did not expect the auth password check")
-			return nil
+			return false
 		})
 	err := srv.Start()
 	assert.NoError(t, err)
 	//
-	srv.AddHandler(path1, func(http.ResponseWriter, *http.Request) {
+	srv.AddHandler(path1, func(string, http.ResponseWriter, *http.Request) {
 		logrus.Infof("TestNoAuth: path1 hit")
 		assert.Fail(t, "did not expect the request to pass")
 	})
@@ -141,15 +141,15 @@ func TestCertAuth(t *testing.T) {
 	path1Hit := 0
 	loginHit := 0
 	srv := tlsserver.NewTLSServer(testAddress, testPort,
-		serverCertPath, serverKeyPath, caCertPath, func(loginID1, password string) error {
+		serverCertPath, serverKeyPath, caCertPath, func(loginID1, password string) bool {
 			loginHit++
 			assert.Fail(t, "did not expect login check with cert auth")
-			return fmt.Errorf("Incorrect userid or password")
+			return false
 		})
 	err := srv.Start()
 	assert.NoError(t, err)
 	// handler can be added any time
-	srv.AddHandler(path1, func(http.ResponseWriter, *http.Request) {
+	srv.AddHandler(path1, func(string, http.ResponseWriter, *http.Request) {
 		logrus.Infof("TestAuthCert: path1 hit")
 		path1Hit++
 	})
@@ -173,17 +173,14 @@ func TestJWTLogin(t *testing.T) {
 	path2 := "/hello"
 	path2Hit := 0
 	srv := tlsserver.NewTLSServer(testAddress, testPort,
-		serverCertPath, serverKeyPath, caCertPath, func(loginID1, password string) error {
+		serverCertPath, serverKeyPath, caCertPath, func(loginID1, password string) bool {
 			loginHit++
-			if loginID1 == user1 && password == user1Pass {
-				return nil
-			}
-			return fmt.Errorf("Incorrect userid or password")
+			return loginID1 == user1 && password == user1Pass
 		})
 	err := srv.Start()
 	assert.NoError(t, err)
 	//
-	srv.AddHandler(path2, func(resp http.ResponseWriter, req *http.Request) {
+	srv.AddHandler(path2, func(userID string, resp http.ResponseWriter, req *http.Request) {
 		path2Hit++
 	})
 
@@ -221,17 +218,14 @@ func TestJWTRefresh(t *testing.T) {
 	path2 := "/hello"
 	path2Hit := 0
 	srv := tlsserver.NewTLSServer(testAddress, testPort, serverCertPath, serverKeyPath, caCertPath,
-		func(loginID1, password string) error {
+		func(loginID string, password string) bool {
 			loginHit++
-			if loginID1 == user1 && password == user1Pass {
-				return nil
-			}
-			return fmt.Errorf("Incorrect userid or password")
+			return loginID == user1 && password == user1Pass
 		})
 	err := srv.Start()
 	assert.NoError(t, err)
 	//
-	srv.AddHandler(path2, func(resp http.ResponseWriter, req *http.Request) {
+	srv.AddHandler(path2, func(userID string, resp http.ResponseWriter, req *http.Request) {
 		path2Hit++
 	})
 
@@ -260,7 +254,7 @@ func TestQueryParams(t *testing.T) {
 		serverCertPath, serverKeyPath, caCertPath, nil)
 	err := srv.Start()
 	assert.NoError(t, err)
-	srv.AddHandler(path2, func(resp http.ResponseWriter, req *http.Request) {
+	srv.AddHandler(path2, func(userID string, resp http.ResponseWriter, req *http.Request) {
 		// query string
 		q1 := srv.GetQueryString(req, "query1", "")
 		assert.Equal(t, "bob", q1)
@@ -299,7 +293,7 @@ func TestWriteResponse(t *testing.T) {
 		serverCertPath, serverKeyPath, caCertPath, nil)
 	err := srv.Start()
 	assert.NoError(t, err)
-	srv.AddHandler(path2, func(resp http.ResponseWriter, req *http.Request) {
+	srv.AddHandler(path2, func(userID string, resp http.ResponseWriter, req *http.Request) {
 		srv.WriteBadRequest(resp, "bad request")
 		srv.WriteInternalError(resp, "internal error")
 		srv.WriteNotFound(resp, "not found")
@@ -339,16 +333,13 @@ func TestBasicAuth(t *testing.T) {
 	// setup server and client environment
 	srv := tlsserver.NewTLSServer(testAddress, testPort,
 		serverCertPath, serverKeyPath, caCertPath,
-		func(userID, password string) error {
-			if userID == loginID1 && password == password1 {
-				return nil
-			}
-			return fmt.Errorf("Incorrect userid or password")
+		func(userID, password string) bool {
+			return userID == loginID1 && password == password1
 		})
 	err := srv.Start()
 	assert.NoError(t, err)
 	//
-	srv.AddHandler(path1, func(http.ResponseWriter, *http.Request) {
+	srv.AddHandler(path1, func(string, http.ResponseWriter, *http.Request) {
 		logrus.Infof("TestBasicAuth: path1 hit")
 		path1Hit++
 	})

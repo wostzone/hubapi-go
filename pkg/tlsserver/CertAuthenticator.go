@@ -1,7 +1,6 @@
 package tlsserver
 
 import (
-	"fmt"
 	"net/http"
 )
 
@@ -12,13 +11,20 @@ type CertAuthenticator struct {
 
 // AuthenticateRequest
 // The real check happens by the TLS server that verifies it is signed by the CA.
-// Returns an error if no client certificate is used
-func (hauth *CertAuthenticator) AuthenticateRequest(resp http.ResponseWriter, req *http.Request) error {
+// If the certificate is a plugin, then no userID is returned
+// Returns the userID of the certificate (CN) or an error if no client certificate is used
+func (hauth *CertAuthenticator) AuthenticateRequest(resp http.ResponseWriter, req *http.Request) (userID string, ok bool) {
 	if len(req.TLS.PeerCertificates) == 0 {
-		return fmt.Errorf("CertAuthentication: No client certificate used")
+		return "", false
+	}
+	cert := req.TLS.PeerCertificates[0]
+	userID = cert.Subject.CommonName
+	// a plugin is not a username
+	if cert.Subject.CommonName == "plugin" {
+		userID = ""
 	}
 
-	return nil
+	return userID, true
 }
 
 // Create a new HTTP authenticator

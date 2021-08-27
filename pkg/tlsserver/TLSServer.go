@@ -29,34 +29,36 @@ type TLSServer struct {
 }
 
 // AddHandler adds a new handler for a path.
-// The server is configured to verify provided client certificate but does not require
-// that the client uses one. It is up to the application to decide which paths can be used
-// without client certificate and which paths do require a client certificate.
-// See the http.Request object to determine if a client cert is provided.
 //
-// The server authenticator is used to authenticate the connection before passing it to the handler
-// in theory this allows for different authentications depending on the path, but for WoST we simply
-// require full authentication for all methods.
+// The server authenticates the request before passing it to this handler.
+// The handler's userID is that of the authenticated user, and is intended for authorization of the request.
+// If authentication is not enabled then the userID is empty.
 //
 //  path to listen on. This supports wildcards
-//  handler to invoke with the request
-func (srv *TLSServer) AddHandler(path string, handler func(http.ResponseWriter, *http.Request)) {
+//  handler to invoke with the request. The userID is only provided when an authenticator is used
+func (srv *TLSServer) AddHandler(path string,
+	handler func(userID string, resp http.ResponseWriter, req *http.Request)) {
 
 	// do we need a local copy of handler? not sure
 	local_handler := handler
 	if srv.httpAuthenticator != nil {
-		// the internal authenticator performs certificate based, basic or digest authentication if needed
+		// the internal authenticator performs certificate based, basic or jwt token authentication if needed
 		srv.router.HandleFunc(path, func(resp http.ResponseWriter, req *http.Request) {
-			err := srv.httpAuthenticator.AuthenticateRequest(resp, req)
-			if err != nil {
-				srv.WriteUnauthorized(resp, fmt.Sprintf("TLSServer.HandleFunc %s: Invalid credentials", path))
+			// valid authentication without userID means a plugin certificate was used which is always authorized
+			userID, match := srv.httpAuthenticator.AuthenticateRequest(resp, req)
+			if !match {
+				msg := fmt.Sprintf("TLSServer.HandleFunc %s: User '%s' from %s is unauthorized", path, userID, req.RemoteAddr)
+				logrus.Infof("%s", msg)
+				srv.WriteUnauthorized(resp, msg)
 			} else {
-				local_handler(resp, req)
+				local_handler(userID, resp, req)
 			}
 		})
 	} else {
-		// the internal authenticator performs certificate based, basic or digest authentication if needed
-		srv.router.HandleFunc(path, handler)
+		srv.router.HandleFunc(path, func(resp http.ResponseWriter, req *http.Request) {
+			// no authenticator means we don't know who the user is
+			local_handler("", resp, req)
+		})
 	}
 }
 
@@ -140,7 +142,7 @@ func (srv *TLSServer) Stop() {
 // returns TLS server for handling requests
 func NewTLSServer(address string, port uint,
 	serverCertPath string, serverKeyPath string, caCertPath string,
-	authenticator func(userID, secret string) error) *TLSServer {
+	authenticator func(userID, secret string) bool) *TLSServer {
 	// for now the JWT login path is fixed. Once a use-case comes up that requires something configurable
 	// this can be updated.
 	jwtLoginPath := tlsclient.DefaultJWTLoginPath

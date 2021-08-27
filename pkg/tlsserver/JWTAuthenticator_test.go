@@ -15,9 +15,9 @@ import (
 // JWT test cases for 100% coverage
 func TestJWTToken(t *testing.T) {
 	user1 := "user1"
-	jauth := tlsserver.NewJWTAuthenticator(nil, func(login, pass string) error {
+	jauth := tlsserver.NewJWTAuthenticator(nil, func(login, pass string) bool {
 		assert.Fail(t, "Should never reach here")
-		return nil
+		return false
 	})
 	expTime := time.Now().Add(time.Second * 100)
 	accessToken, refreshToken, err := jauth.CreateJWTTokens("user1", expTime)
@@ -38,9 +38,9 @@ func TestJWTNotWostToken(t *testing.T) {
 	user1 := "user1"
 	secret := []byte("notreallyasecret")
 
-	jauth := tlsserver.NewJWTAuthenticator(secret, func(login, pass string) error {
+	jauth := tlsserver.NewJWTAuthenticator(secret, func(login, pass string) bool {
 		assert.Fail(t, "Should never reach here")
-		return nil
+		return false
 	})
 
 	claims1 := jwt.StandardClaims{Id: user1}
@@ -59,9 +59,9 @@ func TestJWTNotWostToken(t *testing.T) {
 
 // additional JWT test cases for 100% coverage
 func TestJWTBadToken(t *testing.T) {
-	jauth := tlsserver.NewJWTAuthenticator(nil, func(login, pass string) error {
+	jauth := tlsserver.NewJWTAuthenticator(nil, func(login, pass string) bool {
 		assert.Fail(t, "Should never reach here")
-		return nil
+		return false
 	})
 
 	// start with a valid access token
@@ -72,37 +72,38 @@ func TestJWTBadToken(t *testing.T) {
 	assert.NotNil(t, accessToken)
 	assert.NotNil(t, refreshToken)
 	req.Header.Add("Authorization", "bearer "+accessToken)
-	err = jauth.AuthenticateRequest(nil, req)
-	assert.NoError(t, err)
+	userID, match := jauth.AuthenticateRequest(nil, req)
+	assert.True(t, match)
+	assert.NotEmpty(t, userID)
 
 	// missing auth token
 	req = &http.Request{}
-	err = jauth.AuthenticateRequest(nil, req)
-	assert.Error(t, err)
+	_, match = jauth.AuthenticateRequest(nil, req)
+	assert.False(t, match)
 
 	// invalid auth header
 	req, _ = http.NewRequest("GET", "badurl", nil)
 	req.Header.Add("Authorization", "")
-	err = jauth.AuthenticateRequest(nil, req)
-	assert.Error(t, err)
+	_, match = jauth.AuthenticateRequest(nil, req)
+	assert.False(t, match)
 
 	// incomplete bearer token
 	req, _ = http.NewRequest("GET", "badurl", nil)
 	req.Header.Add("Authorization", "bearer")
-	err = jauth.AuthenticateRequest(nil, req)
-	assert.Error(t, err)
+	_, match = jauth.AuthenticateRequest(nil, req)
+	assert.False(t, match)
 
 	// invalid bearer token
 	req, _ = http.NewRequest("GET", "badurl", nil)
 	req.Header.Add("Authorization", "bearer invalidtoken")
-	err = jauth.AuthenticateRequest(nil, req)
-	assert.Error(t, err)
+	_, match = jauth.AuthenticateRequest(nil, req)
+	assert.False(t, match)
 }
 
 func TestBadLogin(t *testing.T) {
-	jauth := tlsserver.NewJWTAuthenticator(nil, func(login, pass string) error {
+	jauth := tlsserver.NewJWTAuthenticator(nil, func(login, pass string) bool {
 		assert.Fail(t, "Should never reach here")
-		return nil
+		return false
 	})
 	body := http.NoBody
 	req, err := http.NewRequest("GET", "someurl", body)

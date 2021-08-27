@@ -25,6 +25,12 @@ const DefaultConfigFolder = "./config"
 // location of log files wrt home folder
 const DefaultLogsFolder = "./logs"
 
+// auth
+const (
+	DefaultAclFile  = "hub.acl"
+	DefaultUnpwFile = "hub.passwd"
+)
+
 // DefaultPort for MQTT or Websocket over TLS port
 const DefaultMqttPortUnpw = 8883
 const DefaultMqttPortCert = 8884
@@ -44,6 +50,10 @@ type HubConfig struct {
 	MqttPortUnpw int    `yaml:"mqttPortUnpw,omitempty"` // MQTT TLS port for login/password authentication
 	MqttPortWS   int    `yaml:"mqttPortWS,omitempty"`   // Websocket TLS port for login/password authentication
 	MqttTimeout  int    `yaml:"mqttTimeout,omitempty"`  // plugin mqtt connection timeout in seconds. 0 for indefinite
+
+	// auth
+	AclStorePath  string `yaml:"aclStore"`  // path to the ACL store
+	UnpwStorePath string `yaml:"unpwStore"` // path to the uername/password store
 
 	// zoning
 	Zone string `yaml:"zone"` // zone this hub belongs to. Used as prefix in ThingID, default is local
@@ -94,6 +104,8 @@ func CreateDefaultHubConfig(homeFolder string) *HubConfig {
 	config.MqttPortWS = DefaultMqttPortWS
 	config.Loglevel = "warning"
 	config.LogsFolder = path.Join(homeFolder, "logs")
+	config.AclStorePath = path.Join(config.ConfigFolder, DefaultAclFile)
+	config.UnpwStorePath = path.Join(config.ConfigFolder, DefaultUnpwFile)
 	return config
 }
 

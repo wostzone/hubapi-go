@@ -54,6 +54,15 @@ func AddTDProperty(td ThingTD, name string, property interface{}) {
 	}
 }
 
+// return the ID of the given thing TD
+func GetID(td ThingTD) string {
+	if td == nil {
+		return ""
+	}
+	id := td["id"].(string)
+	return id
+}
+
 // RemoveTDProperty removes a property from the TD.
 func RemoveTDProperty(td ThingTD, name string) {
 	props := td[vocab.WoTProperties].(map[string]interface{})

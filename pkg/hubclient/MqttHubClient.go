@@ -16,15 +16,6 @@ A: paho-mqtt
 B: https://github.com/emqx/emqx
 */
 
-// Message types to receive
-const (
-	MessageTypeAction = "action"
-	MessageTypeConfig = "config" // update property config
-	MessageTypeEvent  = "event"
-	MessageTypeTD     = "td"
-	MessageTypeValues = "values" // receive property values
-)
-
 // MqttHubClient is a wrapper around the generic MQTT client with convenience methods for use
 // by plugins, Things and consumers to subscribe to Thing information and publish configuration,
 // events and actions.

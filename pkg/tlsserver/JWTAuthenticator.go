@@ -77,7 +77,7 @@ type JWTLoginCredentials struct {
 //
 type JWTAuthenticator struct {
 	// the secrets verification handler
-	verifyUsernamePassword func(username, password string) error
+	verifyUsernamePassword func(username, password string) bool
 	jwtKey                 []byte // secret for signing key
 
 	accessTokenValidity  time.Duration
@@ -89,13 +89,14 @@ type JWTAuthenticator struct {
 
 // AuthenticateRequest validates the access token
 // The access token is provided in the Authorization field as the bearer token.
-// Returns an error if authentication failed
-func (jauth *JWTAuthenticator) AuthenticateRequest(resp http.ResponseWriter, req *http.Request) error {
-	var err error
+// Returns the authenticated user and true if there is a match, of false if authentication failed
+func (jauth *JWTAuthenticator) AuthenticateRequest(resp http.ResponseWriter, req *http.Request) (userID string, match bool) {
 
 	accessTokenString, err := jauth.GetBearerToken(req)
 	if err != nil {
-		return err
+		// this just means JWT is not used
+		logrus.Debugf("JWTAuthenticator: No bearer token in request %s '%s' from %s", req.Method, req.RequestURI, req.RemoteAddr)
+		return "", false
 	}
 	// 	// try the cookie -> refresh
 	// 	cookie, err := req.Cookie(JwtRefreshCookieName)
@@ -107,11 +108,13 @@ func (jauth *JWTAuthenticator) AuthenticateRequest(resp http.ResponseWriter, req
 	jwtToken, claims, err := jauth.DecodeToken(accessTokenString)
 	_ = claims
 	if err != nil {
-		return fmt.Errorf("JWTAuthenticator: Invalid access token: %s", err)
+		logrus.Infof("JWTAuthenticator: Invalid access token in request %s '%s' from %s",
+			req.Method, req.RequestURI, req.RemoteAddr)
+		return "", false
 	}
 	// hoora
 	logrus.Infof("JWTAuthenticator. Request by %s authenticated with valid JWT token", jwtToken.Header)
-	return nil
+	return claims.Username, true
 }
 
 // CreateJWTTokens creates a new access and refresh token pair containing the username.
@@ -218,8 +221,8 @@ func (jauth *JWTAuthenticator) HandleJWTLogin(resp http.ResponseWriter, req *htt
 		return
 	}
 	// this is not an authentication provider. Use a callback for actual authentication
-	err = jauth.verifyUsernamePassword(loginCred.Username, loginCred.Password)
-	if err != nil {
+	match := jauth.verifyUsernamePassword(loginCred.Username, loginCred.Password)
+	if !match {
 		resp.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -308,7 +311,8 @@ func (jauth *JWTAuthenticator) WriteJWTTokens(
 //
 //  secret for generating tokens, or nil to generate a random 64 byte secret
 //  verifyUsernamePassword is the handler that validates the loginID and secret
-func NewJWTAuthenticator(secret []byte, verifyUsernamePassword func(loginID, secret string) error) *JWTAuthenticator {
+func NewJWTAuthenticator(
+	secret []byte, verifyUsernamePassword func(loginID, secret string) bool) *JWTAuthenticator {
 	if secret == nil {
 		secret = make([]byte, 64)
 		rand.Read(secret)
