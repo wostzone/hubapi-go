@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/wostzone/wostlib-go/pkg/certsetup"
-	"github.com/wostzone/wostlib-go/pkg/signing"
 )
 
 var homeFolder string
@@ -53,9 +52,9 @@ func TestTLSCertificateGeneration(t *testing.T) {
 	_ = caCert
 	require.NoErrorf(t, err, "Failed parsing CA certificate")
 
-	clientKey := signing.CreateECDSAKeys()
-	clientKeyPEM, _ := signing.PrivateKeyToPEM(clientKey)
-	clientPubPEM, err := signing.PublicKeyToPEM(&clientKey.PublicKey)
+	clientKey := certsetup.CreateECDSAKeys()
+	clientKeyPEM, _ := certsetup.PrivateKeyToPEM(clientKey)
+	clientPubPEM, err := certsetup.PublicKeyToPEM(&clientKey.PublicKey)
 	require.NoError(t, err)
 	clientCertPEM, err := certsetup.CreateClientCert(clientID, certsetup.OUClient,
 		clientPubPEM, caCertPEM, caKeyPEM, time.Now(), certsetup.DefaultCertDurationDays)
@@ -63,9 +62,9 @@ func TestTLSCertificateGeneration(t *testing.T) {
 	require.NotEmptyf(t, clientCertPEM, "Failed creating client certificate")
 	require.NotEmptyf(t, clientKeyPEM, "Failed creating client key")
 
-	serverKey := signing.CreateECDSAKeys()
-	serverKeyPEM, _ := signing.PrivateKeyToPEM(serverKey)
-	serverPubPEM, err := signing.PublicKeyToPEM(&serverKey.PublicKey)
+	serverKey := certsetup.CreateECDSAKeys()
+	serverKeyPEM, _ := certsetup.PrivateKeyToPEM(serverKey)
+	serverPubPEM, err := certsetup.PublicKeyToPEM(&serverKey.PublicKey)
 	serverCertPEM, err := certsetup.CreateHubCert(hostnames, serverPubPEM, caCertPEM, caKeyPEM)
 	require.NoErrorf(t, err, "Failed creating server certificate")
 	// serverCert, err := tls.X509KeyPair(serverCertPEM, serverKeyPEM)
@@ -103,8 +102,8 @@ func TestHubCert(t *testing.T) {
 	caCert, err := tls.X509KeyPair([]byte(caCertPEM), []byte(caKeyPEM))
 	_ = caCert
 	require.NoErrorf(t, err, "Failed parsing CA certificate")
-	hubKey := signing.CreateECDSAKeys()
-	hubPubPEM, err := signing.PublicKeyToPEM(&hubKey.PublicKey)
+	hubKey := certsetup.CreateECDSAKeys()
+	hubPubPEM, err := certsetup.PublicKeyToPEM(&hubKey.PublicKey)
 	hubCertPEM, err := certsetup.CreateHubCert(hostnames, hubPubPEM, caCertPEM, caKeyPEM)
 	require.NoErrorf(t, err, "Failed creating hub certificate")
 	require.NotNil(t, hubCertPEM)
@@ -113,8 +112,8 @@ func TestHubCert(t *testing.T) {
 func TestHubCertBadCA(t *testing.T) {
 	hostnames := []string{"127.0.0.1"}
 	caCertPEM, caKeyPEM := certsetup.CreateHubCA()
-	hubKey := signing.CreateECDSAKeys()
-	hubPubPEM, err := signing.PublicKeyToPEM(&hubKey.PublicKey)
+	hubKey := certsetup.CreateECDSAKeys()
+	hubPubPEM, err := certsetup.PublicKeyToPEM(&hubKey.PublicKey)
 	//
 	hubCertPEM, err := certsetup.CreateHubCert(hostnames, hubPubPEM, caCertPEM, "BadCAKey")
 	require.Error(t, err)
@@ -134,9 +133,9 @@ func TestClientCertBadCA(t *testing.T) {
 	ou := certsetup.OUClient
 	caCertPEM, caKeyPEM := certsetup.CreateHubCA()
 
-	clientKey := signing.CreateECDSAKeys()
-	// clientKeyPEM, _ := signing.PrivateKeyToPEM(clientKey)
-	clientPubPEM, _ := signing.PublicKeyToPEM(&clientKey.PublicKey)
+	clientKey := certsetup.CreateECDSAKeys()
+	// clientKeyPEM, _ := certsetup.PrivateKeyToPEM(clientKey)
+	clientPubPEM, _ := certsetup.PublicKeyToPEM(&clientKey.PublicKey)
 
 	//
 	clientCertPEM, err := certsetup.CreateClientCert(clientID, ou, "bad pubkey",
@@ -168,9 +167,9 @@ func TestBadCert(t *testing.T) {
 	})
 	caCertPEM = string(certPEMBuffer.Bytes())
 
-	clientKey := signing.CreateECDSAKeys()
-	clientKeyPEM, _ := signing.PrivateKeyToPEM(clientKey)
-	clientPubPEM, _ := signing.PublicKeyToPEM(&clientKey.PublicKey)
+	clientKey := certsetup.CreateECDSAKeys()
+	clientKeyPEM, _ := certsetup.PrivateKeyToPEM(clientKey)
+	clientPubPEM, _ := certsetup.PublicKeyToPEM(&clientKey.PublicKey)
 	clientCertPEM, err := certsetup.CreateClientCert(clientID, certsetup.OUClient, clientPubPEM,
 		caCertPEM, caKeyPEM, time.Now(), certsetup.TempCertDurationDays)
 
@@ -191,10 +190,10 @@ func TestCreateCerts(t *testing.T) {
 	// load the certs
 	clientKeyPEM, err := certsetup.LoadPEM(certFolder, certsetup.PluginKeyFile)
 	require.NoError(t, err)
-	clientPrivKey, err := signing.PrivateKeyFromPEM(clientKeyPEM)
+	clientPrivKey, err := certsetup.PrivateKeyFromPEM(clientKeyPEM)
 	require.NoError(t, err)
 	pubKey := clientPrivKey.PublicKey
-	clientPubKeyPEM, err := signing.PublicKeyToPEM(&pubKey)
+	clientPubKeyPEM, err := certsetup.PublicKeyToPEM(&pubKey)
 	require.NoError(t, err)
 	caCertPEM, err := certsetup.LoadPEM(certFolder, certsetup.CaCertFile)
 	assert.NoError(t, err)

@@ -3,6 +3,7 @@ package signing
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/asn1"
@@ -37,6 +38,15 @@ type MessageSigner struct {
 	privateKey *ecdsa.PrivateKey // private key for signing and decryption.
 }
 
+// CreateECDSAKeys creates a asymmetric key set
+// Returns a private key that contains its associated public key
+func CreateECDSAKeys() *ecdsa.PrivateKey {
+	rng := rand.Reader
+	curve := elliptic.P256()
+	privKey, _ := ecdsa.GenerateKey(curve, rng)
+	return privKey
+}
+
 // DecodeMessage decrypts the message and verifies the sender signature.
 // The sender and signer of the message is contained the message 'sender' field. If the
 // Sender field is missing then the 'address' field is used as sender.
@@ -45,6 +55,9 @@ type MessageSigner struct {
 func (signer *MessageSigner) DecodeMessage(rawMessage string, object interface{}) (isEncrypted bool, isSigned bool, err error) {
 
 	dmessage, isEncrypted, err := DecryptMessage(rawMessage, signer.privateKey)
+	if err != nil {
+		return false, false, err
+	}
 	isSigned, err = VerifySenderJWSSignature(dmessage, object, signer.GetPublicKey)
 	return isEncrypted, isSigned, err
 }
@@ -73,6 +86,9 @@ func CreateEcdsaSignature(payload []byte, privateKey *ecdsa.PrivateKey) string {
 		return ""
 	}
 	sig, err := asn1.Marshal(ECDSASignature{r, s})
+	if err != nil {
+		return ""
+	}
 	return base64.URLEncoding.EncodeToString(sig)
 }
 

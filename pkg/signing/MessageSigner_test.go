@@ -133,6 +133,7 @@ func TestSigningPerformance(t *testing.T) {
 
 	// verify JWS signature using my lib
 	sig1, err := signing.CreateJWSSignature(payload1, privKey)
+	assert.NoError(t, err)
 	start = time.Now()
 	for count := 0; count < 10000; count++ {
 		signing.VerifyJWSMessage(sig1, &privKey.PublicKey)
@@ -147,7 +148,9 @@ func TestVerifySender(t *testing.T) {
 
 	payload1, err := json.Marshal(testObject)
 	assert.NoErrorf(t, err, "Serializing node1 failed")
+	assert.NoError(t, err)
 	sig1, err := signing.CreateJWSSignature(payload1, privKey)
+	assert.NoError(t, err)
 
 	var received TestObjectWithSender
 	isSigned, err := signing.VerifySenderJWSSignature(sig1, &received, func(address string) *ecdsa.PublicKey {
@@ -159,7 +162,9 @@ func TestVerifySender(t *testing.T) {
 
 	// using 'Address' instead of sender in the payload
 	payload2, err := json.Marshal(testObject2)
+	assert.NoError(t, err)
 	sig2, err := signing.CreateJWSSignature(payload2, privKey)
+	assert.NoError(t, err)
 	var received2 TestObjectNoSender
 	isSigned, err = signing.VerifySenderJWSSignature(sig2, &received2, func(address string) *ecdsa.PublicKey {
 		// return the public key of this publisher
@@ -170,13 +175,16 @@ func TestVerifySender(t *testing.T) {
 
 	// using no public key lookup
 	payload2, err = json.Marshal(testObject2)
+	assert.NoError(t, err)
 	sig2, err = signing.CreateJWSSignature(payload2, privKey)
+	assert.NoError(t, err)
 	isSigned, err = signing.VerifySenderJWSSignature(sig2, &received2, nil)
 	assert.NoErrorf(t, err, "Verification without public key lookup function should succeed")
 	assert.True(t, isSigned, "Message wasn't signed")
 
 	// no public key for sender
 	sig2, err = signing.CreateJWSSignature(payload2, privKey)
+	assert.NoError(t, err)
 	isSigned, err = signing.VerifySenderJWSSignature(sig2, &received2, func(address string) *ecdsa.PublicKey {
 		return nil
 	})
@@ -186,31 +194,36 @@ func TestVerifySender(t *testing.T) {
 	// using empty address
 	testObject2.Address = ""
 	payload2, err = json.Marshal(testObject2)
+	assert.NoError(t, err)
 	sig2, err = signing.CreateJWSSignature(payload2, privKey)
+	assert.NoError(t, err)
 	isSigned, err = signing.VerifySenderJWSSignature(sig2, &received2, nil)
 	assert.Errorf(t, err, "Verification with message without Address should not succeed")
 	assert.True(t, isSigned, "Message wasn't signed")
 
 	// no sender or address
-	var obj3 struct{ field1 string }
+	var obj3 struct{ Field1 string }
 	payload3, err := json.Marshal(obj3)
+	assert.NoError(t, err)
 	sig3, err := signing.CreateJWSSignature(payload3, privKey)
+	assert.NoError(t, err)
 	isSigned, err = signing.VerifySenderJWSSignature(sig3, &obj3, nil)
 	assert.Errorf(t, err, "Verification with message without sender should not succeed")
 	assert.True(t, isSigned, "Message wasn't signed")
 
 	// invalid message
-	isSigned, err = signing.VerifySenderJWSSignature("invalid", &received, nil)
+	_, err = signing.VerifySenderJWSSignature("invalid", &received, nil)
 	assert.Errorf(t, err, "Verification with invalid message should not succeed")
 	// invalid payload
 	payload4 := []byte("this is not json")
 	sig4, err := signing.CreateJWSSignature(payload4, privKey)
-	isSigned, err = signing.VerifySenderJWSSignature(sig4, &received, nil)
+	assert.NoError(t, err)
+	_, err = signing.VerifySenderJWSSignature(sig4, &received, nil)
 	assert.Errorf(t, err, "Verification with non json payload should not succeed")
 
 	// different public key
 	newKeys := signing.CreateECDSAKeys()
-	isSigned, err = signing.VerifySenderJWSSignature(sig2, &received, func(address string) *ecdsa.PublicKey {
+	_, err = signing.VerifySenderJWSSignature(sig2, &received, func(address string) *ecdsa.PublicKey {
 		// return the public key of this publisher
 		return &newKeys.PublicKey
 	})

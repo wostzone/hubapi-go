@@ -1,4 +1,4 @@
-// Package certsetup with creation of self signed certificate chain using ECDSA signing
+// Package certsetup with creation of self signed certificate chain using ECDSA
 // Credits: https://gist.github.com/shaneutt/5e1995295cff6721c89a71d13a71c251
 package certsetup
 
@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/wostzone/wostlib-go/pkg/signing"
 )
 
 // Standard WoST client and server key/certificate filenames. All stored in PEM format.
@@ -102,9 +101,9 @@ func CreateCertificateBundle(names []string, certFolder string) error {
 	serverKeyPEM, _ := LoadPEM(certFolder, HubKeyFile)
 	if serverCertPEM == "" || serverKeyPEM == "" || forceHubCert {
 		logrus.Infof("CreateCertificateBundle Refreshing Hub server certificate in %s", certFolder)
-		serverKey := signing.CreateECDSAKeys()
-		serverKeyPEM, _ = signing.PrivateKeyToPEM(serverKey)
-		serverPubPEM, err := signing.PublicKeyToPEM(&serverKey.PublicKey)
+		serverKey := CreateECDSAKeys()
+		serverKeyPEM, _ = PrivateKeyToPEM(serverKey)
+		serverPubPEM, err := PublicKeyToPEM(&serverKey.PublicKey)
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle server public key failed: %s", err)
 		}
@@ -121,9 +120,9 @@ func CreateCertificateBundle(names []string, certFolder string) error {
 	if pluginCertPEM == "" || pluginKeyPEM == "" || forcePluginCert {
 		logrus.Infof("CreateCertificateBundle Refreshing plugin server certificate in %s", certFolder)
 
-		pluginKey := signing.CreateECDSAKeys()
-		pluginKeyPEM, _ = signing.PrivateKeyToPEM(pluginKey)
-		pluginPubKeyPEM, err := signing.PublicKeyToPEM(&pluginKey.PublicKey)
+		pluginKey := CreateECDSAKeys()
+		pluginKeyPEM, _ = PrivateKeyToPEM(pluginKey)
+		pluginPubKeyPEM, err := PublicKeyToPEM(&pluginKey.PublicKey)
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle plugin cert failed: %s", err)
 		}
@@ -148,14 +147,14 @@ func CreateCertificateBundle(names []string, certFolder string) error {
 //  ou of the client, stored as the OrganizationalUnit
 //  clientPubKeyPEM with the client's public key
 //  caCertPEM CA's certificate in PEM format.
-//  caKeyPEM CA's ECDSA key used in signing.
+//  caKeyPEM CA's ECDSA key used in certsetup.
 //  start time the certificate is first valid. Intended for testing. Use time.now()
 //  durationDays nr of days the certificate will be valid
 // Returns the signed certificate or error
 func CreateClientCert(clientID string, ou string, clientPubKeyPEM, caCertPEM string,
 	caKeyPEM string, start time.Time, durationDays int) (certPEM string, err error) {
 
-	caPrivKey, err := signing.PrivateKeyFromPEM(caKeyPEM)
+	caPrivKey, err := PrivateKeyFromPEM(caKeyPEM)
 	if err != nil {
 		return "", err
 	}
@@ -164,7 +163,7 @@ func CreateClientCert(clientID string, ou string, clientPubKeyPEM, caCertPEM str
 		return "", err
 	}
 
-	clientPubKey, err := signing.PublicKeyFromPEM(clientPubKeyPEM)
+	clientPubKey, err := PublicKeyFromPEM(clientPubKeyPEM)
 	if err != nil {
 		return "", err
 	}
@@ -227,8 +226,8 @@ func CreateHubCA() (certPEM string, keyPEM string) {
 	}
 
 	// Create the CA private key
-	privKey := signing.CreateECDSAKeys()
-	privKeyPEM, _ := signing.PrivateKeyToPEM(privKey)
+	privKey := CreateECDSAKeys()
+	privKeyPEM, _ := PrivateKeyToPEM(privKey)
 
 	// create the CA
 	caCertDer, err := x509.CreateCertificate(rand.Reader, rootTemplate, rootTemplate, &privKey.PublicKey, privKey)
@@ -252,7 +251,7 @@ func CreateHubCert(names []string, hubPublicKeyPEM string, caCertPEM string, caK
 	logrus.Infof("CertSetup.CreateHubCA: Refresh Hub certificate for IP/name: %s", names)
 
 	// We need the CA key and certificate
-	caPrivKey, err := signing.PrivateKeyFromPEM(caKeyPEM)
+	caPrivKey, err := PrivateKeyFromPEM(caKeyPEM)
 	if err != nil {
 		return "", err
 	}
@@ -261,7 +260,7 @@ func CreateHubCert(names []string, hubPublicKeyPEM string, caCertPEM string, caK
 		return "", err
 	}
 
-	hubPublicKey, err := signing.PublicKeyFromPEM(hubPublicKeyPEM)
+	hubPublicKey, err := PublicKeyFromPEM(hubPublicKeyPEM)
 	if err != nil {
 		return "", err
 	}
@@ -336,11 +335,11 @@ func CertFromPEM(certPEM string) (*x509.Certificate, error) {
 func LoadOrCreateCertKey(certFolder string, keyFile string) (*ecdsa.PrivateKey, error) {
 
 	pkPath := path.Join(certFolder, keyFile)
-	privKey, err := signing.LoadPrivateKeyFromPEM(pkPath)
+	privKey, err := LoadPrivateKeyFromPEM(pkPath)
 
 	if err != nil {
-		privKey = signing.CreateECDSAKeys()
-		err = signing.SavePrivateKeyToPEM(privKey, pkPath)
+		privKey = CreateECDSAKeys()
+		err = SavePrivateKeyToPEM(privKey, pkPath)
 		if err != nil {
 			logrus.Errorf("CreateClientKeys.Start, failed saving private key: %s", err)
 			return nil, err

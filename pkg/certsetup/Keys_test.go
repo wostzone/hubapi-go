@@ -1,45 +1,45 @@
-package signing_test
+package certsetup_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/wostzone/wostlib-go/pkg/signing"
+	"github.com/wostzone/wostlib-go/pkg/certsetup"
 )
 
 const privKeyPemFile = "../../test/certs/privKey.pem"
 
 func TestSaveLoadPrivKey(t *testing.T) {
-	privKey := signing.CreateECDSAKeys()
-	err := signing.SavePrivateKeyToPEM(privKey, privKeyPemFile)
+	privKey := certsetup.CreateECDSAKeys()
+	err := certsetup.SavePrivateKeyToPEM(privKey, privKeyPemFile)
 	assert.NoError(t, err)
 
-	privKey2, err := signing.LoadPrivateKeyFromPEM(privKeyPemFile)
+	privKey2, err := certsetup.LoadPrivateKeyFromPEM(privKeyPemFile)
 	assert.NoError(t, err)
 	assert.NotNil(t, privKey2)
 }
 
 func TestSaveLoadPrivKeyNotFound(t *testing.T) {
-	privKey := signing.CreateECDSAKeys()
+	privKey := certsetup.CreateECDSAKeys()
 	// no access
-	err := signing.SavePrivateKeyToPEM(privKey, "/root")
+	err := certsetup.SavePrivateKeyToPEM(privKey, "/root")
 	assert.Error(t, err)
 
 	//
-	privKey2, err := signing.LoadPrivateKeyFromPEM("/root")
+	privKey2, err := certsetup.LoadPrivateKeyFromPEM("/root")
 	assert.Error(t, err)
 	assert.Nil(t, privKey2)
 }
 
 func TestPublicKeyPEM(t *testing.T) {
-	privKey := signing.CreateECDSAKeys()
+	privKey := certsetup.CreateECDSAKeys()
 
-	pem, err := signing.PublicKeyToPEM(&privKey.PublicKey)
+	pem, err := certsetup.PublicKeyToPEM(&privKey.PublicKey)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, pem)
 
-	pubKey, err := signing.PublicKeyFromPEM(pem)
+	pubKey, err := certsetup.PublicKeyFromPEM(pem)
 	assert.NoError(t, err)
 	assert.NotNil(t, pubKey)
 
@@ -48,14 +48,14 @@ func TestPublicKeyPEM(t *testing.T) {
 }
 
 func TestPrivateKeyPEM(t *testing.T) {
-	privKey := signing.CreateECDSAKeys()
+	privKey := certsetup.CreateECDSAKeys()
 
-	pem, err := signing.PrivateKeyToPEM(privKey)
+	pem, err := certsetup.PrivateKeyToPEM(privKey)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, pem)
 
-	privKey2, err := signing.PrivateKeyFromPEM(pem)
+	privKey2, err := certsetup.PrivateKeyFromPEM(pem)
 	assert.NoError(t, err)
 	assert.NotNil(t, privKey2)
 
@@ -64,11 +64,11 @@ func TestPrivateKeyPEM(t *testing.T) {
 }
 
 func TestInvalidPEM(t *testing.T) {
-	privKey, err := signing.PrivateKeyFromPEM("PRIVATE KEY")
+	privKey, err := certsetup.PrivateKeyFromPEM("PRIVATE KEY")
 	assert.Error(t, err)
 	assert.Nil(t, privKey)
 
-	pubKey, err := signing.PublicKeyFromPEM("PUBLIC KEY")
+	pubKey, err := certsetup.PublicKeyFromPEM("PUBLIC KEY")
 	assert.Error(t, err)
 	assert.Nil(t, pubKey)
 }

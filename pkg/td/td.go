@@ -54,6 +54,15 @@ func AddTDProperty(td ThingTD, name string, property interface{}) {
 	}
 }
 
+// CreateThingID creates a ThingID from the zone it belongs to, the hardware device ID and device Type
+// This creates a Thing ID: URN:zone:deviceID:deviceType.
+//  zone is the name of the zone the device is part of
+//  deviceID is the ID of the device to use as part of the Thing ID
+func CreateThingID(zone string, deviceID string, deviceType vocab.DeviceType) string {
+	thingID := fmt.Sprintf("urn:%s:%s:%s", zone, deviceID, deviceType)
+	return thingID
+}
+
 // return the ID of the given thing TD
 func GetID(td ThingTD) string {
 	if td == nil {
@@ -111,15 +120,6 @@ func SetThingErrorStatus(td ThingTD, errorStatus string) {
 //  forms with list of forms to add. See also CreateForm to create a single form
 func SetTDForms(td ThingTD, formList []map[string]interface{}) {
 	td[vocab.WoTForms] = formList
-}
-
-// CreateThingID creates a ThingID from the zone it belongs to, the hardware device ID and device Type
-// This creates a Thing ID: URN:zone:deviceID:deviceType.
-//  zone is the name of the zone the device is part of
-//  deviceID is the ID of the device to use as part of the Thing ID
-func CreateThingID(zone string, deviceID string, deviceType vocab.DeviceType) string {
-	thingID := fmt.Sprintf("urn:%s:%s:%s", zone, deviceID, deviceType)
-	return thingID
 }
 
 // CreatePublisherThingID creates a globally unique Thing ID that includes the zone and publisher

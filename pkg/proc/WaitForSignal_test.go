@@ -1,4 +1,4 @@
-package hubclient_test
+package proc_test
 
 import (
 	"os"
@@ -8,14 +8,14 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/wostzone/wostlib-go/pkg/hubclient"
+	"github.com/wostzone/wostlib-go/pkg/proc"
 )
 
 func TestWaitForSignal(t *testing.T) {
 	m := sync.Mutex{}
 	var waitCompleted = false
 	go func() {
-		hubclient.WaitForSignal()
+		proc.WaitForSignal()
 		m.Lock()
 		waitCompleted = true
 		m.Unlock()

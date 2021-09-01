@@ -1,4 +1,4 @@
-package signing
+package certsetup
 
 import (
 	"crypto/ecdsa"

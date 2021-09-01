@@ -1,5 +1,5 @@
-// Package hubclient with functions to assist plugins
-package hubclient
+// Package waitforsignal with functions to assist plugins
+package proc
 
 import (
 	"fmt"
