@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wostzone/wostlib-go/pkg/hubconfig"
+	"github.com/wostzone/hubserve-go/pkg/hubconfig"
 )
 
 // CustomConfig as example of how to extend the hub configuration

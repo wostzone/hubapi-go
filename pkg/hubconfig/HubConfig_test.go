@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wostzone/wostlib-go/pkg/hubconfig"
+	"github.com/wostzone/hubserve-go/pkg/hubconfig"
 )
 
 func TestDefaultConfigNoHome(t *testing.T) {

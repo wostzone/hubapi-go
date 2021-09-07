@@ -8,8 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wostzone/wostlib-go/pkg/discovery"
-	"github.com/wostzone/wostlib-go/pkg/hubnet"
+	discoclient "github.com/wostzone/hubclient-go/pkg/discovery"
+	"github.com/wostzone/hubserve-go/pkg/discovery"
+	"github.com/wostzone/hubserve-go/pkg/hubnet"
 )
 
 const testServiceID = "discovery-test"
@@ -29,7 +30,7 @@ func TestDiscover(t *testing.T) {
 	assert.NotNil(t, discoServer)
 
 	// Test if it is discovered
-	address, port, discoParams, records, err := discovery.DiscoverServices(testServiceName, 1)
+	address, port, discoParams, records, err := discoclient.DiscoverServices(testServiceName, 1)
 	require.NoError(t, err)
 	rec0 := records[0]
 	assert.Equal(t, testServiceID, rec0.Instance)
@@ -51,7 +52,7 @@ func TestDiscoViaDomainName(t *testing.T) {
 	assert.NotNil(t, discoServer)
 
 	// Test if it is discovered
-	discoAddress, discoPort, _, records, err := discovery.DiscoverServices(testServiceName, 1)
+	discoAddress, discoPort, _, records, err := discoclient.DiscoverServices(testServiceName, 1)
 	rec0 := records[0]
 	assert.NoError(t, err)
 	assert.Equal(t, "127.0.0.1", discoAddress)
@@ -96,7 +97,7 @@ func TestDiscoverNotFound(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test if it is discovered
-	discoAddress, discoPort, _, records, err := discovery.DiscoverServices("wrongname", 1)
+	discoAddress, discoPort, _, records, err := discoclient.DiscoverServices("wrongname", 1)
 	_ = discoAddress
 	_ = discoPort
 	_ = records
@@ -129,7 +130,7 @@ func TestExternalAddress(t *testing.T) {
 
 func TestDNSSDScan(t *testing.T) {
 
-	records, err := discovery.DnsSDScan("", 2)
+	records, err := discoclient.DnsSDScan("", 2)
 	fmt.Printf("Found %d records in scan", len(records))
 
 	assert.NoError(t, err)

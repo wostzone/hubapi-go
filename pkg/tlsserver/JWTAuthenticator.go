@@ -10,7 +10,7 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"github.com/sirupsen/logrus"
-	"github.com/wostzone/wostlib-go/pkg/tlsclient"
+	"github.com/wostzone/hubclient-go/pkg/tlsclient"
 )
 
 const JWTIssuer = "tlsserver.JWTAuthenticator"
@@ -84,7 +84,7 @@ type JWTAuthenticator struct {
 	refreshTokenValidity time.Duration
 
 	// optional callback when an expired token is used
-	expiredTokenAlert func(claims *JwtClaims)
+	// expiredTokenAlert func(claims *JwtClaims)
 }
 
 // AuthenticateRequest validates the access token

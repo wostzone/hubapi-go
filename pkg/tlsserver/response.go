@@ -30,8 +30,16 @@ func (srv *TLSServer) WriteNotImplemented(resp http.ResponseWriter, errMsg strin
 	http.Error(resp, errMsg, http.StatusNotImplemented)
 }
 
-// WriteUnauthorized logs and respond with unauthorized status code and log error
+// WriteUnauthorized responds with unauthorized (401) status code and log http error
+// Use this when login fails
 func (srv *TLSServer) WriteUnauthorized(resp http.ResponseWriter, errMsg string) {
 	logrus.Errorf(errMsg)
 	http.Error(resp, errMsg, http.StatusUnauthorized)
+}
+
+// WriteForbidden logs and respond with forbidden (403) code and log http error
+// Use this when access a resource without sufficient credentials
+func (srv *TLSServer) WriteForbidden(resp http.ResponseWriter, errMsg string) {
+	logrus.Errorf(errMsg)
+	http.Error(resp, errMsg, http.StatusForbidden)
 }

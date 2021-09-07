@@ -13,7 +13,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
-	"github.com/wostzone/wostlib-go/pkg/tlsclient"
+	"github.com/wostzone/hubclient-go/pkg/tlsclient"
 )
 
 // Simple TLS Server
@@ -49,7 +49,7 @@ func (srv *TLSServer) AddHandler(path string,
 			if !match {
 				msg := fmt.Sprintf("TLSServer.HandleFunc %s: User '%s' from %s is unauthorized", path, userID, req.RemoteAddr)
 				logrus.Infof("%s", msg)
-				srv.WriteUnauthorized(resp, msg)
+				srv.WriteForbidden(resp, msg)
 			} else {
 				local_handler(userID, resp, req)
 			}

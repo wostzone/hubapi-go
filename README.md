@@ -1,28 +1,18 @@
-# WoST Web Of Things Library
+# WoST Hub Services Library
 
-This repository provides a library with definitions and methods to connect to the WoST Hub and exchange information between Things and consumers. It contains the type definitions and methods for devices to publish 'Thing' information and for users to subscribe to updates. 
+This repository provides a library with definitions and methods to provide services as part of the WoST Hub. For developing clients of the Hub see 'hubclient-go'.
 
 ## Project Status
 
-Status: The status of this library is Alpha. It is functional but breaking changes must be expected.
+Status: The status of this library is Alpha. It is functional,and has a test coverage of over 90%. However, breaking changes must be expected.
 
-This API repository is usable:
-- The hubconfig can be used to read configuration for use in plugins
-- The certsetup can be used to manage self signed certificates (see Hub's installation)
-- The hubclient package can be used to create a MQTT client connection to the Hub message bus and publish/subscribe messages
-- The td package can be used to construct a WoT TD with properties, events and actions
-
-What is not yet functional:
-- signing of messages is under consideration. This needs a protocol definition to follow. Presumably using JWS
-- encryption of messages is under consideration. This needs a protocol definition to follow. Presumably using JWE
-- the generated TD is basic and might not conform to the WoT standard that is itself in flux (June 2021)
-- the client does not use the TD forms. This is under consideration.
-
-
+Under consideration:
+* Signing of messages is under consideration. Most likely using JWS.
+* Encryption of messages. Presumably using JWE. It can be useful for sending messages to the device that should not be accessible to others on the message bus.
 
 ## Audience
 
-This project is aimed at WoST Thing and Hub Plugin developers that share concerns about the security and privacy risk of running a server on every WoT Thing. WoST developers choose to not run servers on Things and instead use a hub and spokes model.
+This repository is intended for developers of Services for the WoST Hub. WoST Hub services follow the paradigm that Things do not run servers. Hub Services are often servers that are secure and can be upgraded over the air using the Hub upgrader.
 
 
 ## Summary

@@ -1,5 +1,5 @@
-// Package certsetup with creation of self signed certificate chain using ECDSA
-// Credits: https://gist.github.com/shaneutt/5e1995295cff6721c89a71d13a71c251
+// Package certsetup with server side creation of self signed certificate chain using ECDSA
+// Credits: https://gist.github.com/shaneutt/5e1995295cff6721c89a71d13a71c251 keys
 package certsetup
 
 import (
@@ -9,7 +9,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/big"
@@ -18,6 +17,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/wostzone/hubclient-go/pkg/certs"
 )
 
 // Standard WoST client and server key/certificate filenames. All stored in PEM format.
@@ -64,7 +64,7 @@ const pluginClientID = "plugin"
 
 // const keySize = 2048 // 4096
 const caDefaultValidityDuration = time.Hour * 24 * 364 * 20 // 20 years
-const caTemporaryValidityDuration = time.Hour * 24 * 3      // 3 days
+// const caTemporaryValidityDuration = time.Hour * 24 * 3      // 3 days
 
 const DefaultCertDurationDays = 365
 const TempCertDurationDays = 1
@@ -84,26 +84,30 @@ func CreateCertificateBundle(names []string, certFolder string) error {
 	// create the CA only if needed
 	// TODO: How to handle CA expiry?
 	// TODO: Handle CA revocation
-	caCertPEM, _ := LoadPEM(certFolder, CaCertFile)
-	caKeyPEM, _ := LoadPEM(certFolder, CaKeyFile)
+	caCertPEM, _ := LoadPEM(path.Join(certFolder, CaCertFile))
+	caKeyPEM, _ := LoadPEM(path.Join(certFolder, CaKeyFile))
 	if caCertPEM == "" || caKeyPEM == "" {
 		logrus.Warningf("CreateCertificateBundle Generating a CA certificate in %s as none was found. Names: %s", certFolder, names)
 		caCertPEM, caKeyPEM = CreateHubCA()
-		err = SaveKeyToPEM(caKeyPEM, certFolder, CaKeyFile)
+		err = SaveKeyToPEM(caKeyPEM, path.Join(certFolder, CaKeyFile))
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle CA failed writing. Unable to continue: %s", err)
 		}
-		err = SaveCertToPEM(caCertPEM, certFolder, CaCertFile)
+		pemPath := path.Join(certFolder, CaCertFile)
+		err = ioutil.WriteFile(pemPath, []byte(caCertPEM), 0644)
+		if err != nil {
+			return err
+		}
 	}
 
 	// create the Hub server cert if needed
-	serverCertPEM, _ := LoadPEM(certFolder, HubCertFile)
-	serverKeyPEM, _ := LoadPEM(certFolder, HubKeyFile)
+	serverCertPEM, _ := LoadPEM(path.Join(certFolder, HubCertFile))
+	serverKeyPEM, _ := LoadPEM(path.Join(certFolder, HubKeyFile))
 	if serverCertPEM == "" || serverKeyPEM == "" || forceHubCert {
 		logrus.Infof("CreateCertificateBundle Refreshing Hub server certificate in %s", certFolder)
-		serverKey := CreateECDSAKeys()
-		serverKeyPEM, _ = PrivateKeyToPEM(serverKey)
-		serverPubPEM, err := PublicKeyToPEM(&serverKey.PublicKey)
+		serverKey := certs.CreateECDSAKeys()
+		serverKeyPEM, _ = certs.PrivateKeyToPEM(serverKey)
+		serverPubPEM, err := certs.PublicKeyToPEM(&serverKey.PublicKey)
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle server public key failed: %s", err)
 		}
@@ -111,18 +115,18 @@ func CreateCertificateBundle(names []string, certFolder string) error {
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle server failed: %s", err)
 		}
-		SaveKeyToPEM(serverKeyPEM, certFolder, HubKeyFile)
-		SaveCertToPEM(serverCertPEM, certFolder, HubCertFile)
+		SaveKeyToPEM(serverKeyPEM, path.Join(certFolder, HubKeyFile))
+		SaveCertToPEM(serverCertPEM, path.Join(certFolder, HubCertFile))
 	}
 	// create the Plugin certificate
-	pluginCertPEM, _ := LoadPEM(certFolder, PluginCertFile)
-	pluginKeyPEM, _ := LoadPEM(certFolder, PluginKeyFile)
+	pluginCertPEM, _ := LoadPEM(path.Join(certFolder, PluginCertFile))
+	pluginKeyPEM, _ := LoadPEM(path.Join(certFolder, PluginKeyFile))
 	if pluginCertPEM == "" || pluginKeyPEM == "" || forcePluginCert {
 		logrus.Infof("CreateCertificateBundle Refreshing plugin server certificate in %s", certFolder)
 
-		pluginKey := CreateECDSAKeys()
-		pluginKeyPEM, _ = PrivateKeyToPEM(pluginKey)
-		pluginPubKeyPEM, err := PublicKeyToPEM(&pluginKey.PublicKey)
+		pluginKey := certs.CreateECDSAKeys()
+		pluginKeyPEM, _ = certs.PrivateKeyToPEM(pluginKey)
+		pluginPubKeyPEM, err := certs.PublicKeyToPEM(&pluginKey.PublicKey)
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle plugin cert failed: %s", err)
 		}
@@ -132,8 +136,8 @@ func CreateCertificateBundle(names []string, certFolder string) error {
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle client failed: %s", err)
 		}
-		SaveKeyToPEM(pluginKeyPEM, certFolder, PluginKeyFile)
-		SaveCertToPEM(pluginCertPEM, certFolder, PluginCertFile)
+		SaveKeyToPEM(pluginKeyPEM, path.Join(certFolder, PluginKeyFile))
+		SaveCertToPEM(pluginCertPEM, path.Join(certFolder, PluginCertFile))
 	}
 	return nil
 }
@@ -154,16 +158,16 @@ func CreateCertificateBundle(names []string, certFolder string) error {
 func CreateClientCert(clientID string, ou string, clientPubKeyPEM, caCertPEM string,
 	caKeyPEM string, start time.Time, durationDays int) (certPEM string, err error) {
 
-	caPrivKey, err := PrivateKeyFromPEM(caKeyPEM)
+	caPrivKey, err := certs.PrivateKeyFromPEM(caKeyPEM)
 	if err != nil {
 		return "", err
 	}
-	caCert, err := CertFromPEM(caCertPEM)
+	caCert, err := certs.X509CertFromPEM(caCertPEM)
 	if err != nil {
 		return "", err
 	}
 
-	clientPubKey, err := PublicKeyFromPEM(clientPubKeyPEM)
+	clientPubKey, err := certs.PublicKeyFromPEM(clientPubKeyPEM)
 	if err != nil {
 		return "", err
 	}
@@ -217,21 +221,21 @@ func CreateHubCA() (certPEM string, keyPEM string) {
 		KeyUsage:    x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 
-		// This hub cert is the only CA. Don't allow intermediate CAs
+		// This hub cert is the only CA. Not using intermediate CAs
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 		MaxPathLen:            0,
 		MaxPathLenZero:        true,
-		// IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
 	}
 
 	// Create the CA private key
-	privKey := CreateECDSAKeys()
-	privKeyPEM, _ := PrivateKeyToPEM(privKey)
+	privKey := certs.CreateECDSAKeys()
+	privKeyPEM, _ := certs.PrivateKeyToPEM(privKey)
 
 	// create the CA
 	caCertDer, err := x509.CreateCertificate(rand.Reader, rootTemplate, rootTemplate, &privKey.PublicKey, privKey)
 	if err != nil {
+		// normally this never happens
 		logrus.Errorf("CertSetup.CreateHubCA: Unable to create WoST Hub CA cert: %s", err)
 		return "", ""
 	}
@@ -251,16 +255,16 @@ func CreateHubCert(names []string, hubPublicKeyPEM string, caCertPEM string, caK
 	logrus.Infof("CertSetup.CreateHubCA: Refresh Hub certificate for IP/name: %s", names)
 
 	// We need the CA key and certificate
-	caPrivKey, err := PrivateKeyFromPEM(caKeyPEM)
+	caPrivKey, err := certs.PrivateKeyFromPEM(caKeyPEM)
 	if err != nil {
 		return "", err
 	}
-	caCert, err := CertFromPEM(caCertPEM)
+	caCert, err := certs.X509CertFromPEM(caCertPEM)
 	if err != nil {
 		return "", err
 	}
 
-	hubPublicKey, err := PublicKeyFromPEM(hubPublicKeyPEM)
+	hubPublicKey, err := certs.PublicKeyFromPEM(hubPublicKeyPEM)
 	if err != nil {
 		return "", err
 	}
@@ -317,29 +321,26 @@ func CertDerToPEM(derCertBytes []byte) string {
 	return certPEMBuffer.String()
 }
 
-// Convert a PEM certificate to x509 instance
-func CertFromPEM(certPEM string) (*x509.Certificate, error) {
-	caCertBlock, _ := pem.Decode([]byte(certPEM))
-	if caCertBlock == nil {
-		return nil, errors.New("CertFromPEM pem.Decode failed")
-	}
-	caCert, err := x509.ParseCertificate(caCertBlock.Bytes)
-	return caCert, err
-}
+// // Convert a PEM certificate to x509 instance
+// func CertFromPEM(certPEM string) (*x509.Certificate, error) {
+// 	caCertBlock, _ := pem.Decode([]byte(certPEM))
+// 	if caCertBlock == nil {
+// 		return nil, errors.New("CertFromPEM pem.Decode failed")
+// 	}
+// 	caCert, err := x509.ParseCertificate(caCertBlock.Bytes)
+// 	return caCert, err
+// }
 
 // LoadOrCreateCertKey is a helper to load a public/private key pair for certificate management
 // If the keys don't exist, they are created.
-//  certFolder location where key file is stored
-//  keyFile is the name of the key file, certsetup.ClientKeyFile, ServerKeyFile or CAKeyFile
 // Returns ECDSA private key
-func LoadOrCreateCertKey(certFolder string, keyFile string) (*ecdsa.PrivateKey, error) {
+func LoadOrCreateCertKey(keyPath string) (*ecdsa.PrivateKey, error) {
 
-	pkPath := path.Join(certFolder, keyFile)
-	privKey, err := LoadPrivateKeyFromPEM(pkPath)
+	privKey, err := certs.LoadKeysFromPEM(keyPath)
 
 	if err != nil {
-		privKey = CreateECDSAKeys()
-		err = SavePrivateKeyToPEM(privKey, pkPath)
+		privKey = certs.CreateECDSAKeys()
+		err = certs.SaveKeysToPEM(privKey, keyPath)
 		if err != nil {
 			logrus.Errorf("CreateClientKeys.Start, failed saving private key: %s", err)
 			return nil, err
@@ -350,8 +351,7 @@ func LoadOrCreateCertKey(certFolder string, keyFile string) (*ecdsa.PrivateKey, 
 
 // LoadPEM loads and verifies a PEM file from certificate folder
 // Return loaded PEM file as string
-func LoadPEM(certFolder string, filename string) (pemString string, err error) {
-	pemPath := path.Join(certFolder, filename)
+func LoadPEM(pemPath string) (pemString string, err error) {
 	pemData, err := ioutil.ReadFile(pemPath)
 	// test
 	block, _ := pem.Decode(pemData)
@@ -364,8 +364,7 @@ func LoadPEM(certFolder string, filename string) (pemString string, err error) {
 // SaveKeyToPEM saves the private key in PEM format to file in the certificate folder
 // permissions will be 0600
 // Return error
-func SaveKeyToPEM(pem string, certFolder string, fileName string) error {
-	pemPath := path.Join(certFolder, fileName)
+func SaveKeyToPEM(pem string, pemPath string) error {
 	err := ioutil.WriteFile(pemPath, []byte(pem), 0600)
 	return err
 }
@@ -373,8 +372,7 @@ func SaveKeyToPEM(pem string, certFolder string, fileName string) error {
 // SaveCertToPEM saves the certificate in pem format to file in the certificate folder
 // permissions will be 0644
 // Return error
-func SaveCertToPEM(pem string, certFolder string, fileName string) error {
-	pemPath := path.Join(certFolder, fileName)
+func SaveCertToPEM(pem string, pemPath string) error {
 	err := ioutil.WriteFile(pemPath, []byte(pem), 0644)
 	return err
 }

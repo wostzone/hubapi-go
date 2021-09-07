@@ -9,7 +9,7 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wostzone/wostlib-go/pkg/tlsserver"
+	"github.com/wostzone/hubserve-go/pkg/tlsserver"
 )
 
 // JWT test cases for 100% coverage

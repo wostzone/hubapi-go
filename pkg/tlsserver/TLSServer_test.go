@@ -1,6 +1,8 @@
 package tlsserver_test
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,18 +13,22 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wostzone/wostlib-go/pkg/certsetup"
-	"github.com/wostzone/wostlib-go/pkg/hubnet"
-	"github.com/wostzone/wostlib-go/pkg/tlsclient"
-	"github.com/wostzone/wostlib-go/pkg/tlsserver"
+	"github.com/wostzone/hubclient-go/pkg/certs"
+	"github.com/wostzone/hubclient-go/pkg/tlsclient"
+	"github.com/wostzone/hubserve-go/pkg/certsetup"
+	"github.com/wostzone/hubserve-go/pkg/tlsserver"
 )
 
-var testAddress string
-var testPort uint = 4444
+var serverAddress string
+var serverPort uint = 4444
+var clientHostPort string
+var caCert *x509.Certificate
+var pluginCert *tls.Certificate
 
 // These are set in TestMain
 var homeFolder string
 var serverCertFolder string
+
 var caCertPath string
 var caKeyPath string
 var pluginCertPath string
@@ -34,8 +40,11 @@ var serverKeyPath string
 // Used for all test cases in this package
 func TestMain(m *testing.M) {
 	logrus.Infof("------ TestMain of httpauthhandler ------")
-	testAddress = hubnet.GetOutboundIP("").String()
-	hostnames := []string{testAddress}
+	// serverAddress = hubnet.GetOutboundIP("").String()
+	// use the localhost interface for testing
+	serverAddress = "127.0.0.1"
+	hostnames := []string{serverAddress}
+	clientHostPort = fmt.Sprintf("%s:%d", serverAddress, serverPort)
 
 	cwd, _ := os.Getwd()
 	homeFolder = path.Join(cwd, "../../test")
@@ -44,11 +53,15 @@ func TestMain(m *testing.M) {
 	certsetup.CreateCertificateBundle(hostnames, serverCertFolder)
 	caCertPath = path.Join(serverCertFolder, certsetup.CaCertFile)
 	caKeyPath = path.Join(serverCertFolder, certsetup.CaKeyFile)
+	certsetup.LoadOrCreateCertKey(caKeyPath)
+	caCert, _ = certs.LoadX509CertFromPEM(caCertPath)
+
 	serverCertPath = path.Join(serverCertFolder, certsetup.HubCertFile)
 	serverKeyPath = path.Join(serverCertFolder, certsetup.HubKeyFile)
+
 	pluginCertPath = path.Join(serverCertFolder, certsetup.PluginCertFile)
 	pluginKeyPath = path.Join(serverCertFolder, certsetup.PluginKeyFile)
-
+	pluginCert, _ = certs.LoadTLSCertFromPEM(pluginCertPath, pluginKeyPath)
 	res := m.Run()
 
 	time.Sleep(time.Second)
@@ -56,7 +69,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
-	srv := tlsserver.NewTLSServer(testAddress, testPort,
+	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
 		serverCertPath, serverKeyPath, caCertPath, nil)
 	err := srv.Start()
 	assert.NoError(t, err)
@@ -64,24 +77,25 @@ func TestStartStop(t *testing.T) {
 }
 
 func TestNoCA(t *testing.T) {
-	srv := tlsserver.NewTLSServer(testAddress, testPort,
+	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
 		serverCertPath, serverKeyPath, "", nil)
 	err := srv.Start()
 	assert.Error(t, err)
 	srv.Stop()
 }
 func TestBadCert(t *testing.T) {
-	srv := tlsserver.NewTLSServer(testAddress, testPort,
+	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
 		serverCertPath, serverCertPath, caCertPath, nil)
 	err := srv.Start()
 	assert.Error(t, err)
 	srv.Stop()
 }
 
-func TestHandlerNoAuth(t *testing.T) {
+// Connect without authentication
+func TestNoAuth(t *testing.T) {
 	path1 := "/hello"
 	path1Hit := 0
-	srv := tlsserver.NewTLSServer(testAddress, testPort,
+	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
 		serverCertPath, serverKeyPath, caCertPath, nil)
 
 	// handler can be added any time
@@ -92,9 +106,9 @@ func TestHandlerNoAuth(t *testing.T) {
 	err := srv.Start()
 	assert.NoError(t, err)
 
-	cl, err := tlsclient.NewTLSClient(testAddress, testPort, "")
+	cl := tlsclient.NewTLSClient(clientHostPort, nil)
 	require.NoError(t, err)
-	cl.ConnectWithClientCert(pluginCertPath, pluginKeyPath)
+	cl.ConnectWithClientCert(nil)
 	_, err = cl.Get(path1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, path1Hit)
@@ -103,16 +117,17 @@ func TestHandlerNoAuth(t *testing.T) {
 	srv.Stop()
 }
 
-func TestNoAuth(t *testing.T) {
+// Test with invalid login authentication
+func TestUnauthorized(t *testing.T) {
 	path1 := "/test1"
 	loginID1 := "user1"
 	password1 := "user1pass"
 
 	// setup server and client environment
-	srv := tlsserver.NewTLSServer(testAddress, testPort,
+	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
 		serverCertPath, serverKeyPath, caCertPath,
 		func(userID string, password string) bool {
-			assert.Fail(t, "did not expect the auth password check")
+			assert.Fail(t, "Did not expect the auth method to be invoked")
 			return false
 		})
 	err := srv.Start()
@@ -123,12 +138,13 @@ func TestNoAuth(t *testing.T) {
 		assert.Fail(t, "did not expect the request to pass")
 	})
 	//
-	cl, err := tlsclient.NewTLSClient(testAddress, testPort, caCertPath)
+	cl := tlsclient.NewTLSClient(clientHostPort, caCert)
 	assert.NoError(t, err)
-	err = cl.ConnectWithLoginID(loginID1, password1, tlsclient.AuthMethodNone)
+	// AuthMethodNone will always succeed
+	err = cl.ConnectWithLoginID(loginID1, password1, "", tlsclient.AuthMethodNone)
 	assert.NoError(t, err)
 
-	// request should fail if no auth is used
+	// request should fail as login failed
 	_, err = cl.Get(path1)
 	assert.Error(t, err)
 
@@ -140,7 +156,7 @@ func TestCertAuth(t *testing.T) {
 	path1 := "/hello"
 	path1Hit := 0
 	loginHit := 0
-	srv := tlsserver.NewTLSServer(testAddress, testPort,
+	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
 		serverCertPath, serverKeyPath, caCertPath, func(loginID1, password string) bool {
 			loginHit++
 			assert.Fail(t, "did not expect login check with cert auth")
@@ -154,9 +170,9 @@ func TestCertAuth(t *testing.T) {
 		path1Hit++
 	})
 
-	cl, err := tlsclient.NewTLSClient(testAddress, testPort, caCertPath)
+	cl := tlsclient.NewTLSClient(clientHostPort, caCert)
 	require.NoError(t, err)
-	err = cl.ConnectWithClientCert(pluginCertPath, pluginKeyPath)
+	err = cl.ConnectWithClientCert(pluginCert)
 	assert.NoError(t, err)
 	_, err = cl.Get(path1)
 	assert.NoError(t, err)
@@ -166,13 +182,14 @@ func TestCertAuth(t *testing.T) {
 	srv.Stop()
 }
 
+// Test valid authentication using JWT
 func TestJWTLogin(t *testing.T) {
 	user1 := "user1"
 	user1Pass := "pass1"
 	loginHit := 0
 	path2 := "/hello"
 	path2Hit := 0
-	srv := tlsserver.NewTLSServer(testAddress, testPort,
+	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
 		serverCertPath, serverKeyPath, caCertPath, func(loginID1, password string) bool {
 			loginHit++
 			return loginID1 == user1 && password == user1Pass
@@ -184,11 +201,11 @@ func TestJWTLogin(t *testing.T) {
 		path2Hit++
 	})
 
-	cl, err := tlsclient.NewTLSClient(testAddress, testPort, caCertPath)
+	cl := tlsclient.NewTLSClient(clientHostPort, caCert)
 	require.NoError(t, err)
 
 	// first show that an incorrect password fails
-	err = cl.ConnectWithLoginID(user1, "wrongpassword", tlsclient.AuthMethodJwt)
+	err = cl.ConnectWithLoginID(user1, "wrongpassword")
 	assert.Error(t, err)
 	assert.Equal(t, 1, loginHit)
 	// this request should be unauthorized
@@ -198,7 +215,7 @@ func TestJWTLogin(t *testing.T) {
 	cl.Close()
 
 	// try again with the correct password
-	err = cl.ConnectWithLoginID(user1, user1Pass, tlsclient.AuthMethodJwt)
+	err = cl.ConnectWithLoginID(user1, user1Pass)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, loginHit)
 
@@ -217,7 +234,7 @@ func TestJWTRefresh(t *testing.T) {
 	loginHit := 0
 	path2 := "/hello"
 	path2Hit := 0
-	srv := tlsserver.NewTLSServer(testAddress, testPort, serverCertPath, serverKeyPath, caCertPath,
+	srv := tlsserver.NewTLSServer(serverAddress, serverPort, serverCertPath, serverKeyPath, caCertPath,
 		func(loginID string, password string) bool {
 			loginHit++
 			return loginID == user1 && password == user1Pass
@@ -229,14 +246,14 @@ func TestJWTRefresh(t *testing.T) {
 		path2Hit++
 	})
 
-	cl, err := tlsclient.NewTLSClient(testAddress, testPort, caCertPath)
+	cl := tlsclient.NewTLSClient(clientHostPort, caCert)
 	require.NoError(t, err)
 
-	err = cl.ConnectWithLoginID(user1, user1Pass, tlsclient.AuthMethodJwt)
+	err = cl.ConnectWithLoginID(user1, user1Pass)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, loginHit)
 
-	_, err = cl.RefreshJWTTokens()
+	_, err = cl.RefreshJWTTokens("")
 	assert.NoError(t, err)
 
 	// use access token
@@ -250,7 +267,7 @@ func TestJWTRefresh(t *testing.T) {
 func TestQueryParams(t *testing.T) {
 	path2 := "/hello"
 	path2Hit := 0
-	srv := tlsserver.NewTLSServer(testAddress, testPort,
+	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
 		serverCertPath, serverKeyPath, caCertPath, nil)
 	err := srv.Start()
 	assert.NoError(t, err)
@@ -273,9 +290,9 @@ func TestQueryParams(t *testing.T) {
 		path2Hit++
 	})
 
-	cl, err := tlsclient.NewTLSClient(testAddress, testPort, caCertPath)
+	cl := tlsclient.NewTLSClient(clientHostPort, caCert)
 	require.NoError(t, err)
-	err = cl.ConnectWithClientCert(pluginCertPath, pluginKeyPath)
+	err = cl.ConnectWithClientCert(pluginCert)
 	assert.NoError(t, err)
 
 	_, err = cl.Get(fmt.Sprintf("%s?query1=bob&query2=3&multi=a&multi=b", path2))
@@ -289,7 +306,7 @@ func TestQueryParams(t *testing.T) {
 func TestWriteResponse(t *testing.T) {
 	path2 := "/hello"
 	path2Hit := 0
-	srv := tlsserver.NewTLSServer(testAddress, testPort,
+	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
 		serverCertPath, serverKeyPath, caCertPath, nil)
 	err := srv.Start()
 	assert.NoError(t, err)
@@ -302,9 +319,9 @@ func TestWriteResponse(t *testing.T) {
 		path2Hit++
 	})
 
-	cl, err := tlsclient.NewTLSClient(testAddress, testPort, caCertPath)
+	cl := tlsclient.NewTLSClient(clientHostPort, caCert)
 	require.NoError(t, err)
-	err = cl.ConnectWithClientCert(pluginCertPath, pluginKeyPath)
+	err = cl.ConnectWithClientCert(pluginCert)
 	assert.NoError(t, err)
 
 	_, err = cl.Get(path2)
@@ -316,7 +333,7 @@ func TestWriteResponse(t *testing.T) {
 }
 
 func TestBadPort(t *testing.T) {
-	srv := tlsserver.NewTLSServer(testAddress, 1, // bad port
+	srv := tlsserver.NewTLSServer(serverAddress, 1, // bad port
 		serverCertPath, serverKeyPath, caCertPath, nil)
 
 	err := srv.Start()
@@ -331,9 +348,10 @@ func TestBasicAuth(t *testing.T) {
 	password1 := "user1pass"
 
 	// setup server and client environment
-	srv := tlsserver.NewTLSServer(testAddress, testPort,
+	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
 		serverCertPath, serverKeyPath, caCertPath,
 		func(userID, password string) bool {
+			path1Hit++
 			return userID == loginID1 && password == password1
 		})
 	err := srv.Start()
@@ -344,23 +362,23 @@ func TestBasicAuth(t *testing.T) {
 		path1Hit++
 	})
 	//
-	cl, err := tlsclient.NewTLSClient(testAddress, testPort, caCertPath)
+	cl := tlsclient.NewTLSClient(clientHostPort, caCert)
 	assert.NoError(t, err)
-	err = cl.ConnectWithLoginID(loginID1, password1, tlsclient.AuthMethodBasic)
+	err = cl.ConnectWithLoginID(loginID1, password1, "", tlsclient.AuthMethodBasic)
 	assert.NoError(t, err)
 
 	// test the auth with a GET request
 	_, err = cl.Get(path1)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, path1Hit)
+	assert.Equal(t, 2, path1Hit)
 
 	// test a failed login
 	cl.Close()
-	err = cl.ConnectWithLoginID(loginID1, "wrongpassword", tlsclient.AuthMethodBasic)
+	err = cl.ConnectWithLoginID(loginID1, "wrongpassword", "", tlsclient.AuthMethodBasic)
 	assert.NoError(t, err)
 	_, err = cl.Get(path1)
 	assert.Error(t, err)
-	assert.Equal(t, 1, path1Hit) // should not increase
+	assert.Equal(t, 3, path1Hit) // should not increase
 
 	cl.Close()
 	srv.Stop()

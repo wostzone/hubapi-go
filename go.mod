@@ -1,16 +1,16 @@
-module github.com/wostzone/wostlib-go
+module github.com/wostzone/hubserve-go
 
 go 1.14
 
 require (
-	github.com/eclipse/paho.mqtt.golang v1.3.2
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/grandcat/zeroconf v1.0.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0
-	gopkg.in/square/go-jose.v2 v2.5.1
+	github.com/wostzone/hubclient-go v0.0.0-00010101000000-000000000000
 	gopkg.in/yaml.v2 v2.4.0
 )
+
+replace github.com/wostzone/hubclient-go => ../hubclient-go
