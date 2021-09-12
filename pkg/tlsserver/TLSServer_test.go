@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/wostzone/hubclient-go/pkg/certs"
+	"github.com/wostzone/hubclient-go/pkg/config"
 	"github.com/wostzone/hubclient-go/pkg/tlsclient"
 	"github.com/wostzone/hubserve-go/pkg/certsetup"
 	"github.com/wostzone/hubserve-go/pkg/tlsserver"
@@ -51,16 +52,16 @@ func TestMain(m *testing.M) {
 	serverCertFolder = path.Join(homeFolder, "certs")
 
 	certsetup.CreateCertificateBundle(hostnames, serverCertFolder)
-	caCertPath = path.Join(serverCertFolder, certsetup.CaCertFile)
-	caKeyPath = path.Join(serverCertFolder, certsetup.CaKeyFile)
-	certsetup.LoadOrCreateCertKey(caKeyPath)
+	caCertPath = path.Join(serverCertFolder, config.DefaultCaCertFile)
+	caKeyPath = path.Join(serverCertFolder, config.DefaultCaKeyFile)
+	// caKey, _ = certs.LoadKeysFromPEM(caKeyPath)
 	caCert, _ = certs.LoadX509CertFromPEM(caCertPath)
 
-	serverCertPath = path.Join(serverCertFolder, certsetup.HubCertFile)
-	serverKeyPath = path.Join(serverCertFolder, certsetup.HubKeyFile)
+	serverCertPath = path.Join(serverCertFolder, config.DefaultServerCertFile)
+	serverKeyPath = path.Join(serverCertFolder, config.DefaultServerKeyFile)
 
-	pluginCertPath = path.Join(serverCertFolder, certsetup.PluginCertFile)
-	pluginKeyPath = path.Join(serverCertFolder, certsetup.PluginKeyFile)
+	pluginCertPath = path.Join(serverCertFolder, config.DefaultPluginCertFile)
+	pluginKeyPath = path.Join(serverCertFolder, config.DefaultPluginKeyFile)
 	pluginCert, _ = certs.LoadTLSCertFromPEM(pluginCertPath, pluginKeyPath)
 	res := m.Run()
 

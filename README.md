@@ -1,4 +1,4 @@
-# WoST Hub Services Library
+# WoST Hub Server Library
 
 This repository provides a library with definitions and methods to provide services as part of the WoST Hub. For developing clients of the Hub see 'hubclient-go'.
 
@@ -12,18 +12,23 @@ Under consideration:
 
 ## Audience
 
-This repository is intended for developers of Services for the WoST Hub. WoST Hub services follow the paradigm that Things do not run servers. Hub Services are often servers that are secure and can be upgraded over the air using the Hub upgrader.
+This repository is intended for developers of services for the WoST Hub. WoST Hub services follow the paradigm that Things do not run servers. Hub Services are servers that are secure and can be upgraded over the air using the Hub upgrader.
 
 
 ## Summary
 
-This library provides functions and a vocabulary to exchange messages with the WoST Hub in a WoT compatible manner. IoT developers can use it to provision their IoT device, publish their Thing Description, send events and receive actions. Plugin developers can use it to receive Thing Descriptions, events and property values, and to request Thing actions.
+This library provides functions for creating WoST Hub services. Developers can use it to create a secure TLS server that:
+- manage certificates for clients
+- works with the Hub authentication mechanism using client certificate authentication and username/password authentication. 
+- provides DNS-SD discovery of the service
+- watch configuration files for changes
 
 A Python and Javascript version is planned for the future.
+See also the [WoST Hub client library](github.com/wostzone/hubclient-go) for additional client oriented features. 
 
 ## Dependencies
 
-This requires the use of a WoST compatible Hub or Gateway.
+This requires the use of a WoST compatible Hub or Gateway.  
 
 Supported hubs and gateways:
 - [WoST Hub](https://github.com/wostzone/hub)
@@ -31,42 +36,34 @@ Supported hubs and gateways:
 
 ## Usage
 
-This module is intended to be used as a library by Things, Consumers and Hub Plugin developers. It features support for building WoT compliant Thing Description documents, reading Hub and plugin configuration files, and create client connections to the Hub over HTTP/TLS and MQTT/TLS.
+This module is intended to be used as a library by Hub services developers. 
 
-### hubconfig
+### Service Configuration
 
-The hubconfig package contains the library to read the Hub and plugin configuration files and setup logging. It is intended for plugin developers that need Hub configuration. 
+Services can be configured using yaml files. The client config library provides a standard way to
+load configuration and receive notifications if configuration files are changed. 
+See github.com/wostzone/hubclient-go/pkg/config for details.
 
-```golang
-	import "github.com/wostzone/wostlib-go/pkg/hubconfig"
-  ...
-	hc, err := hubconfig.LoadHubConfig(homeFolder)
-  ...
+The standard folder structure for a service is as follows:
+```
+/home/wost/bin/hub/        the hub app folder
+                |- bin     plugin binaries
+                |- config  configuration folder
+                |- certs   certificates
+                |- logs    logging files
 ```
 
+The global hub.yaml contains Hub configuration settings with folders to use. If the above directory
+structure is not usable for whatever reason, the hub.yaml file can change the default folder structure.
 
-### hubclient
 
-The hubclient package contains the client code to connect to the Hub using MQTT. This package wraps the Paho mqtt client and adds automatic reconnect and resubscribes in case connections get lost. 
-
-See the [MQTT API documentation](docs/mqtt-api.md) for details. This client does not yet use [the Form method](https://www.w3.org/TR/2020/WD-wot-thing-description11-20201124/#protocol-bindings).  This will be added in the near future.
-
-Note that the above WoT specification talks about interaction between consumer and Thing. In the case of WoST this interaction takes place via the Hub's message bus.
-
-The api/IThingClient.go package contains the interface on using this library.
-
-Example:
 ```golang
-	import "github.com/wostzone/wostlib-go/pkg/hubclient"
+	import "github.com/wostzone/hubclient-go/pkg/config"
   ...
-  mqttHostPort := "localhost:33101"
-  caCertFile := ...
-  clientCertFile := ...
-  clientKeyFile := ...
- 	deviceClient := hubclient.NewMqttHubDeviceClient(deviceID, mqttHostPort, 
-   caCertFile, clientCertFile, clientKeyFile)
-  err := deviceClient.Start()
-
+  // Load the service and hub configuration
+  var myconfig MyServiceConfig{}
+	hubConfig, err := config.LoadConfig(homeFolder, pluginID, &myconfig)
+  ...
 ```
 
 ### certsetup
@@ -74,49 +71,12 @@ Example:
 The certsetup package provides functions for creating, saving and loading self signed certificates include a self signed Certificate Authority (CA). These are used for verifying authenticity of server and clients of the message bus.
 
 
-
-### signing
-
->### This section is subject to change
-The signing package provides functions to JWS sign and JWE encrypt messages. This is used to verify the authenticity of the sender of the message.
-
-Signing support is built into the HTTP and MQTT protocol binding client and server. 
-Well, soon anyways... 
-
-Signing and sender verification is key to guarantee that the information has not been tampered with and originated from the sender. The WoT spec does not (?) have a place for this, so it might become a WoST extension.
-
-### td
-
-The td package provides methods to construct a WoT compliant Thing Description. 
-
-```json
-	import "github.com/wostzone/wostlib-go/pkg/td"
-	import  "github.com/wostzone/wostlib-go/pkg/vocab"
-
-  ...
-	thing1 := td.CreateTD(deviceID, vocab.DeviceTypeSensor)
- 	prop1 := td.CreateProperty("Prop1", "First property", vocab.PropertyTypeSensor)
- 	td.AddTDProperty(thing1, "prop1", prop)
-  ...
-```
-
-### testenv
-
-The 'testenv' package includes a mosquitto launcher and test environment for testing plugins.
-
-### tlsclient
-
-Wrapper around HTTP/TLS connections. 
-Used by the IDProv protocol binding.
-
 ### tlsserver
 
-Server of HTTP/TLS connections. 
-Used by the IDProv protocol server.
+Server of HTTP/TLS connections that supports certificate and username/password authentication, and authorization.
 
-### vocab
+Used by the IDProv protocol server and the Thingdir directory server.
 
-Vocabulary of property and attributes names for building and using TDs.
 
 # Contributing
 

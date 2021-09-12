@@ -3,14 +3,12 @@
 package certsetup
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"path"
@@ -18,19 +16,20 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/wostzone/hubclient-go/pkg/certs"
+	"github.com/wostzone/hubclient-go/pkg/config"
 )
 
-// Standard WoST client and server key/certificate filenames. All stored in PEM format.
-const (
-	CaCertFile     = "caCert.pem" // CA that signed the server and client certificates
-	CaKeyFile      = "caKey.pem"
-	HubCertFile    = "hubCert.pem"
-	HubKeyFile     = "hubKey.pem"
-	PluginCertFile = "pluginCert.pem"
-	PluginKeyFile  = "pluginKey.pem"
-	// AdminCertFile = "adminCert.pem"
-	// AdminKeyFile  = "adminKey.pem"
-)
+// // Standard WoST client and server key/certificate filenames. All stored in PEM format.
+// const (
+// 	CaCertFile     = "caCert.pem" // CA that signed the server and client certificates
+// 	CaKeyFile      = "caKey.pem"
+// 	HubCertFile    = "hubCert.pem"
+// 	HubKeyFile     = "hubKey.pem"
+// 	PluginCertFile = "pluginCert.pem"
+// 	PluginKeyFile  = "pluginKey.pem"
+// 	// AdminCertFile = "adminCert.pem"
+// 	// AdminKeyFile  = "adminKey.pem"
+// )
 
 // Organization Unit for client authorization are stored in the client certificate OU field
 const (
@@ -53,14 +52,19 @@ const (
 	// By default, plugins have full permission to all APIs
 	// Provision API permissions: Any
 	OUPlugin = "plugin"
+
+	// OUService marks a certificate as that of a Hub service.
+	// By default, services have full permission to all APIs
+	// Provision API permissions: Any
+	OUService = "service"
 )
 
 // Certificate organization name
 const CertOrgName = "WoST"
 const CertOrgLocality = "WoST zone"
 
-// Plugin certificate ID
-const pluginClientID = "plugin"
+// DefaultPluginClientID in the certificate is standard for all plugins
+const DefaultPluginClientID = "plugin"
 
 // const keySize = 2048 // 4096
 const caDefaultValidityDuration = time.Hour * 24 * 364 * 20 // 20 years
@@ -72,7 +76,8 @@ const TempCertDurationDays = 1
 // CreateCertificateBundle is a convenience function to create the Hub CA, server and (plugin) client
 // certificates into the given folder.
 //  * The CA certificate will only be created if missing
-//  * The hub and plugin keys and certificate will always be recreated
+//  * The plugin keys and certificate will always be recreated
+//  * The service keys and certificate will always be recreated
 //
 //  names contain the list of hostname and ip addresses the hub can be reached at. Used in hub cert.
 //  certFolder where to create the certificates
@@ -80,119 +85,58 @@ func CreateCertificateBundle(names []string, certFolder string) error {
 	var err error
 	forcePluginCert := true // best to always created these certs
 	forceHubCert := true
+	var caCert *x509.Certificate
+	var caKeys *ecdsa.PrivateKey
 
 	// create the CA only if needed
 	// TODO: How to handle CA expiry?
 	// TODO: Handle CA revocation
-	caCertPEM, _ := LoadPEM(path.Join(certFolder, CaCertFile))
-	caKeyPEM, _ := LoadPEM(path.Join(certFolder, CaKeyFile))
-	if caCertPEM == "" || caKeyPEM == "" {
+	caCert, _ = certs.LoadX509CertFromPEM(path.Join(certFolder, config.DefaultCaCertFile))
+	caKeys, _ = certs.LoadKeysFromPEM(path.Join(certFolder, config.DefaultCaKeyFile))
+	if caCert == nil || caKeys == nil {
 		logrus.Warningf("CreateCertificateBundle Generating a CA certificate in %s as none was found. Names: %s", certFolder, names)
-		caCertPEM, caKeyPEM = CreateHubCA()
-		err = SaveKeyToPEM(caKeyPEM, path.Join(certFolder, CaKeyFile))
+		caCert, caKeys = CreateHubCA()
+		err = certs.SaveKeysToPEM(caKeys, path.Join(certFolder, config.DefaultCaKeyFile))
 		if err != nil {
-			logrus.Fatalf("CreateCertificateBundle CA failed writing. Unable to continue: %s", err)
+			logrus.Errorf("CreateCertificateBundle CA failed writing. Unable to continue: %s", err)
+			return err
 		}
-		pemPath := path.Join(certFolder, CaCertFile)
-		err = ioutil.WriteFile(pemPath, []byte(caCertPEM), 0644)
+		err = certs.SaveX509CertToPEM(caCert, path.Join(certFolder, config.DefaultCaCertFile))
 		if err != nil {
 			return err
 		}
 	}
 
-	// create the Hub server cert if needed
-	serverCertPEM, _ := LoadPEM(path.Join(certFolder, HubCertFile))
-	serverKeyPEM, _ := LoadPEM(path.Join(certFolder, HubKeyFile))
-	if serverCertPEM == "" || serverKeyPEM == "" || forceHubCert {
+	// create the Hub server cert
+	serverCertPath := path.Join(certFolder, config.DefaultServerCertFile)
+	serverKeyPath := path.Join(certFolder, config.DefaultServerKeyFile)
+	serverCert, _ := certs.LoadTLSCertFromPEM(serverCertPath, serverKeyPath)
+	if serverCert == nil || forceHubCert {
 		logrus.Infof("CreateCertificateBundle Refreshing Hub server certificate in %s", certFolder)
-		serverKey := certs.CreateECDSAKeys()
-		serverKeyPEM, _ = certs.PrivateKeyToPEM(serverKey)
-		serverPubPEM, err := certs.PublicKeyToPEM(&serverKey.PublicKey)
+		serverCert, err = CreateHubServerCert(names, caCert, caKeys)
 		if err != nil {
-			logrus.Fatalf("CreateCertificateBundle server public key failed: %s", err)
+			logrus.Errorf("CreateCertificateBundle server failed: %s", err)
+			return err
 		}
-		serverCertPEM, err = CreateHubCert(names, serverPubPEM, caCertPEM, caKeyPEM)
-		if err != nil {
-			logrus.Fatalf("CreateCertificateBundle server failed: %s", err)
-		}
-		SaveKeyToPEM(serverKeyPEM, path.Join(certFolder, HubKeyFile))
-		SaveCertToPEM(serverCertPEM, path.Join(certFolder, HubCertFile))
+		certs.SaveTLSCertToPEM(serverCert, serverCertPath, serverKeyPath)
 	}
-	// create the Plugin certificate
-	pluginCertPEM, _ := LoadPEM(path.Join(certFolder, PluginCertFile))
-	pluginKeyPEM, _ := LoadPEM(path.Join(certFolder, PluginKeyFile))
-	if pluginCertPEM == "" || pluginKeyPEM == "" || forcePluginCert {
+
+	// create the Plugin (client) certificate
+	pluginCertPath := path.Join(certFolder, config.DefaultPluginCertFile)
+	pluginKeyPath := path.Join(certFolder, config.DefaultPluginKeyFile)
+	pluginCert, _ := certs.LoadTLSCertFromPEM(pluginCertPath, pluginKeyPath)
+	if pluginCert == nil || forcePluginCert {
 		logrus.Infof("CreateCertificateBundle Refreshing plugin server certificate in %s", certFolder)
 
-		pluginKey := certs.CreateECDSAKeys()
-		pluginKeyPEM, _ = certs.PrivateKeyToPEM(pluginKey)
-		pluginPubKeyPEM, err := certs.PublicKeyToPEM(&pluginKey.PublicKey)
-		if err != nil {
-			logrus.Fatalf("CreateCertificateBundle plugin cert failed: %s", err)
-		}
 		// The plugin client cert uses the fixed common name 'plugin'
-		pluginCertPEM, err = CreateClientCert(pluginClientID, OUPlugin, pluginPubKeyPEM,
-			caCertPEM, caKeyPEM, time.Now(), DefaultCertDurationDays)
+		pluginCert, err = CreateHubClientCert(DefaultPluginClientID, OUPlugin,
+			caCert, caKeys, time.Now(), DefaultCertDurationDays)
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle client failed: %s", err)
 		}
-		SaveKeyToPEM(pluginKeyPEM, path.Join(certFolder, PluginKeyFile))
-		SaveCertToPEM(pluginCertPEM, path.Join(certFolder, PluginCertFile))
+		certs.SaveTLSCertToPEM(pluginCert, pluginCertPath, pluginKeyPath)
 	}
 	return nil
-}
-
-// CreateClientCert creates a client side Hub certificate for mutual authentication from client's public key
-// The client role is intended to indicate authorization by role. It is stored in the
-// certificate OrganizationalUnit. See RoleXxx in api
-//
-// This generates a certificate using the client's public key in PEM format
-//  clientID used as the CommonName
-//  ou of the client, stored as the OrganizationalUnit
-//  clientPubKeyPEM with the client's public key
-//  caCertPEM CA's certificate in PEM format.
-//  caKeyPEM CA's ECDSA key used in certsetup.
-//  start time the certificate is first valid. Intended for testing. Use time.now()
-//  durationDays nr of days the certificate will be valid
-// Returns the signed certificate or error
-func CreateClientCert(clientID string, ou string, clientPubKeyPEM, caCertPEM string,
-	caKeyPEM string, start time.Time, durationDays int) (certPEM string, err error) {
-
-	caPrivKey, err := certs.PrivateKeyFromPEM(caKeyPEM)
-	if err != nil {
-		return "", err
-	}
-	caCert, err := certs.X509CertFromPEM(caCertPEM)
-	if err != nil {
-		return "", err
-	}
-
-	clientPubKey, err := certs.PublicKeyFromPEM(clientPubKeyPEM)
-	if err != nil {
-		return "", err
-	}
-
-	template := &x509.Certificate{
-		SerialNumber: big.NewInt(2021),
-		Subject: pkix.Name{
-			Organization:       []string{CertOrgName},
-			Locality:           []string{CertOrgLocality},
-			CommonName:         clientID,
-			OrganizationalUnit: []string{ou},
-			Names:              make([]pkix.AttributeTypeAndValue, 0),
-		},
-		NotBefore: start,
-		NotAfter:  start.AddDate(0, 0, durationDays),
-
-		KeyUsage:    x509.KeyUsageDigitalSignature,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-
-		IsCA:                  false,
-		BasicConstraintsValid: true,
-	}
-	derCertBytes, err := x509.CreateCertificate(rand.Reader, template, caCert, clientPubKey, caPrivKey)
-	certPEM = CertDerToPEM(derCertBytes)
-	return certPEM, err
 }
 
 // CreateHubCA creates WoST Hub Root CA certificate and private key for signing server certificates
@@ -201,7 +145,7 @@ func CreateClientCert(clientID string, ou string, clientPubKeyPEM, caCertPEM str
 // CA is valid for 'caDurationYears'
 //
 //  temporary set to generate a temporary CA for one-off signing
-func CreateHubCA() (certPEM string, keyPEM string) {
+func CreateHubCA() (cert *x509.Certificate, key *ecdsa.PrivateKey) {
 	validity := caDefaultValidityDuration
 
 	// set up our CA certificate
@@ -230,53 +174,97 @@ func CreateHubCA() (certPEM string, keyPEM string) {
 
 	// Create the CA private key
 	privKey := certs.CreateECDSAKeys()
-	privKeyPEM, _ := certs.PrivateKeyToPEM(privKey)
 
 	// create the CA
 	caCertDer, err := x509.CreateCertificate(rand.Reader, rootTemplate, rootTemplate, &privKey.PublicKey, privKey)
 	if err != nil {
 		// normally this never happens
 		logrus.Errorf("CertSetup.CreateHubCA: Unable to create WoST Hub CA cert: %s", err)
-		return "", ""
+		return nil, nil
 	}
-	caCertPEM := CertDerToPEM(caCertDer)
-	return caCertPEM, privKeyPEM
+	caCert, _ := x509.ParseCertificate(caCertDer)
+	return caCert, privKey
 }
 
-// CreateHubCert creates Wost server certificate
-// The Hub certificate is valid for the given names (domain name and IP addresses).
-// This implies that the Hub must use a fixed IP. DNS names are not used for validation.
-//  names contains one or more domain names or IP addresses the Hub can be reached on, to add to the certificate
-//  pubKey is the Hub public key in PEM format
-//  caCertPEM is the CA to sign the server certificate
-// returns the signed Hub certificate in PEM format
-func CreateHubCert(names []string, hubPublicKeyPEM string, caCertPEM string, caKeyPEM string) (certPEM string, err error) {
+// CreateHubClientCert creates a hub client certificate for mutual authentication from client's public key
+// The client role is intended to for role based authorization. It is stored in the
+// certificate OrganizationalUnit. See OUxxx
+//
+// This generates a certificate using the client's public key in PEM format
+//  clientID used as the CommonName, eg pluginID or deviceID
+//  ou of the client role, eg OUNone, OUClient, OUPlugin
+//  caCert CA's certificate for signing
+//  caPrivKey CA's ECDSA key for signing
+//  start time the certificate is first valid. Intended for testing. Use time.now()
+//  durationDays nr of days the certificate will be valid
+// Returns the signed TLS certificate or error
+func CreateHubClientCert(clientID string, ou string, caCert *x509.Certificate, caPrivKey *ecdsa.PrivateKey,
+	start time.Time, durationDays int) (clientCert *tls.Certificate, err error) {
 
-	logrus.Infof("CertSetup.CreateHubCA: Refresh Hub certificate for IP/name: %s", names)
+	if caCert == nil || caPrivKey == nil {
+		err := fmt.Errorf("CreateHubClientCert: missing CA cert or key")
+		logrus.Error(err)
+		return nil, err
+	}
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(2021),
+		Subject: pkix.Name{
+			Organization:       []string{CertOrgName},
+			Locality:           []string{CertOrgLocality},
+			CommonName:         clientID,
+			OrganizationalUnit: []string{ou},
+			Names:              make([]pkix.AttributeTypeAndValue, 0),
+		},
+		NotBefore: start,
+		NotAfter:  start.AddDate(0, 0, durationDays),
 
-	// We need the CA key and certificate
-	caPrivKey, err := certs.PrivateKeyFromPEM(caKeyPEM)
-	if err != nil {
-		return "", err
+		KeyUsage:    x509.KeyUsageDigitalSignature,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+
+		IsCA:                  false,
+		BasicConstraintsValid: true,
 	}
-	caCert, err := certs.X509CertFromPEM(caCertPEM)
-	if err != nil {
-		return "", err
+	clientKey := certs.CreateECDSAKeys()
+	certDer, err := x509.CreateCertificate(rand.Reader, template, caCert,
+		&clientKey.PublicKey, caPrivKey)
+
+	// combined them into a TLS certificate
+	tlscert := &tls.Certificate{}
+	tlscert.Certificate = append(tlscert.Certificate, certDer)
+	tlscert.PrivateKey = clientKey
+
+	return tlscert, err
+}
+
+// CreateHubServerCert creates a new Hub service certificate and private key
+// The certificate is valid for the given names either local domain name and IP addresses.
+// The server must have a fixed IP.
+//  names contains one or more domain names and/or IP addresses the Hub can be reached on, to add to the certificate
+//  caCert is the CA to sign the server certificate
+//  caPrivKey is the CA private key to sign the server certificate
+// returns the signed Server TLS certificate
+func CreateHubServerCert(names []string, caCert *x509.Certificate, caPrivKey *ecdsa.PrivateKey) (cert *tls.Certificate, err error) {
+	if caCert == nil || caPrivKey == nil || names == nil {
+		err := fmt.Errorf("CreateServiceCert: missing argument")
+		logrus.Error(err)
+		return nil, err
+	} else if caCert.PublicKey == nil {
+		err := fmt.Errorf("CreateServiceCert: CA cert has no public key")
+		logrus.Error(err)
+		return nil, err
 	}
 
-	hubPublicKey, err := certs.PublicKeyFromPEM(hubPublicKeyPEM)
-	if err != nil {
-		return "", err
-	}
+	logrus.Infof("CertSetup.CreateServiceCert: Refresh server certificate for IP/name: %s", names)
 
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(2021),
 		Subject: pkix.Name{
-			Organization: []string{CertOrgName},
-			Country:      []string{"CA"},
-			Province:     []string{"BC"},
-			Locality:     []string{CertOrgLocality},
-			CommonName:   "WoST Hub",
+			Organization:       []string{CertOrgName},
+			Country:            []string{"CA"},
+			Province:           []string{"BC"},
+			Locality:           []string{CertOrgLocality},
+			CommonName:         "WoST Service",
+			OrganizationalUnit: []string{OUAdmin},
 		},
 		NotBefore: time.Now(),
 		NotAfter:  time.Now().AddDate(0, 0, DefaultCertDurationDays),
@@ -299,80 +287,18 @@ func CreateHubCert(names []string, hubPublicKeyPEM string, caCertPEM string, caK
 			template.DNSNames = append(template.DNSNames, h)
 		}
 	}
-
-	certDer, err := x509.CreateCertificate(rand.Reader, template, caCert, hubPublicKey, caPrivKey)
+	// Create the server private key
+	certKey := certs.CreateECDSAKeys()
+	// and the certificate itself
+	certDer, err := x509.CreateCertificate(rand.Reader, template, caCert,
+		&certKey.PublicKey, caPrivKey)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	certPEM = CertDerToPEM(certDer)
+	// combined them into a TLS certificate
+	tlscert := &tls.Certificate{}
+	tlscert.Certificate = append(tlscert.Certificate, certDer)
+	tlscert.PrivateKey = certKey
 
-	return certPEM, nil
-}
-
-// Convert certificate DER encoding to PEM
-//  derBytes is the output of x509.CreateCertificate
-func CertDerToPEM(derCertBytes []byte) string {
-	// pem encode certificate
-	certPEMBuffer := new(bytes.Buffer)
-	pem.Encode(certPEMBuffer, &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: derCertBytes,
-	})
-	return certPEMBuffer.String()
-}
-
-// // Convert a PEM certificate to x509 instance
-// func CertFromPEM(certPEM string) (*x509.Certificate, error) {
-// 	caCertBlock, _ := pem.Decode([]byte(certPEM))
-// 	if caCertBlock == nil {
-// 		return nil, errors.New("CertFromPEM pem.Decode failed")
-// 	}
-// 	caCert, err := x509.ParseCertificate(caCertBlock.Bytes)
-// 	return caCert, err
-// }
-
-// LoadOrCreateCertKey is a helper to load a public/private key pair for certificate management
-// If the keys don't exist, they are created.
-// Returns ECDSA private key
-func LoadOrCreateCertKey(keyPath string) (*ecdsa.PrivateKey, error) {
-
-	privKey, err := certs.LoadKeysFromPEM(keyPath)
-
-	if err != nil {
-		privKey = certs.CreateECDSAKeys()
-		err = certs.SaveKeysToPEM(privKey, keyPath)
-		if err != nil {
-			logrus.Errorf("CreateClientKeys.Start, failed saving private key: %s", err)
-			return nil, err
-		}
-	}
-	return privKey, nil
-}
-
-// LoadPEM loads and verifies a PEM file from certificate folder
-// Return loaded PEM file as string
-func LoadPEM(pemPath string) (pemString string, err error) {
-	pemData, err := ioutil.ReadFile(pemPath)
-	// test
-	block, _ := pem.Decode(pemData)
-	if block == nil {
-		return string(pemData), fmt.Errorf("file '%s' is not a valid PEM file", pemPath)
-	}
-	return string(pemData), err
-}
-
-// SaveKeyToPEM saves the private key in PEM format to file in the certificate folder
-// permissions will be 0600
-// Return error
-func SaveKeyToPEM(pem string, pemPath string) error {
-	err := ioutil.WriteFile(pemPath, []byte(pem), 0600)
-	return err
-}
-
-// SaveCertToPEM saves the certificate in pem format to file in the certificate folder
-// permissions will be 0644
-// Return error
-func SaveCertToPEM(pem string, pemPath string) error {
-	err := ioutil.WriteFile(pemPath, []byte(pem), 0644)
-	return err
+	return tlscert, nil
 }
