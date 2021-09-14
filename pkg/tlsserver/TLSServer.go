@@ -6,9 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -20,9 +18,8 @@ import (
 type TLSServer struct {
 	address           string
 	port              uint
-	caCertPath        string
-	serverCertPath    string
-	serverKeyPath     string
+	caCert            *x509.Certificate
+	serverCert        *tls.Certificate
 	httpServer        *http.Server
 	router            *mux.Router
 	httpAuthenticator *HttpAuthenticator
@@ -62,30 +59,23 @@ func (srv *TLSServer) AddHandler(path string,
 	}
 }
 
-// Start the TLS server using CA and Hub certificates from the certfolder
+// Start the TLS server using the provided CA and Server certificates.
 // The server will request but not require a client certificate. If one is provided it must be valid.
 func (srv *TLSServer) Start() error {
-	logrus.Infof("TLSServer.Start: Starting TLS server on address: %s:%d", srv.address, srv.port)
+	var err error
 
-	hubCertPEM, err := ioutil.ReadFile(srv.serverCertPath)
-	hubKeyPEM, err2 := ioutil.ReadFile(srv.serverKeyPath)
-	hubCert, err3 := tls.X509KeyPair(hubCertPEM, hubKeyPEM)
-	if err != nil || err2 != nil || err3 != nil {
-		err := fmt.Errorf("TLSServer.Start: Server certificate pair not found")
+	logrus.Infof("Starting TLS server on address: %s:%d", srv.address, srv.port)
+	if srv.caCert == nil || srv.serverCert == nil {
+		err := fmt.Errorf("missing CA or server certificate")
 		logrus.Error(err)
 		return err
 	}
-	caCertPEM, err := ioutil.ReadFile(srv.caCertPath)
-	if err != nil {
-		err = fmt.Errorf("TLSServer.Start: Missing CA file: %s", err)
-		logrus.Error(err)
-		return err
-	}
+
 	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCertPEM)
+	caCertPool.AddCert(srv.caCert)
 
 	serverTLSConf := &tls.Config{
-		Certificates:       []tls.Certificate{hubCert},
+		Certificates:       []tls.Certificate{*srv.serverCert},
 		ClientAuth:         tls.VerifyClientCertIfGiven,
 		ClientCAs:          caCertPool,
 		MinVersion:         tls.VersionTLS12,
@@ -100,23 +90,17 @@ func (srv *TLSServer) Start() error {
 		TLSConfig: serverTLSConf,
 	}
 	// mutex to capture error result in case startup in the background failed
-	mu := sync.Mutex{}
 	go func() {
 		// serverTLSConf contains certificate and key
 		err2 := srv.httpServer.ListenAndServeTLS("", "")
 		if err2 != nil && err2 != http.ErrServerClosed {
-			mu.Lock()
 			err = fmt.Errorf("TLSServer.Start: ListenAndServeTLS: %s", err2)
-			mu.Unlock()
 			logrus.Error(err)
 		}
 	}()
 	// Make sure the server is listening before continuing
 	time.Sleep(time.Second)
-	mu.Lock()
-	result := err
-	mu.Unlock()
-	return result
+	return err
 }
 
 // Stop the TLS server and close all connections
@@ -141,7 +125,7 @@ func (srv *TLSServer) Stop() {
 //
 // returns TLS server for handling requests
 func NewTLSServer(address string, port uint,
-	serverCertPath string, serverKeyPath string, caCertPath string,
+	serverCert *tls.Certificate, caCert *x509.Certificate,
 	authenticator func(userID, secret string) bool) *TLSServer {
 	// for now the JWT login path is fixed. Once a use-case comes up that requires something configurable
 	// this can be updated.
@@ -149,10 +133,9 @@ func NewTLSServer(address string, port uint,
 	hwtRefreshPath := tlsclient.DefaultJWTRefreshPath
 
 	srv := &TLSServer{
-		router:         mux.NewRouter(),
-		caCertPath:     caCertPath,
-		serverCertPath: serverCertPath,
-		serverKeyPath:  serverKeyPath,
+		router:     mux.NewRouter(),
+		caCert:     caCert,
+		serverCert: serverCert,
 	}
 	if authenticator != nil {
 		srv.httpAuthenticator = NewHttpAuthenticator(authenticator)
