@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/wostzone/hubclient-go/pkg/certs"
 	"github.com/wostzone/hubclient-go/pkg/config"
 	"github.com/wostzone/hubserve-go/pkg/certsetup"
 )
@@ -56,14 +57,15 @@ func TestClientCertBadCA(t *testing.T) {
 	clientID := "client1"
 	ou := certsetup.OUClient
 	caCert, caKey := certsetup.CreateHubCA()
+	keys := certs.CreateECDSAKeys()
 
 	clientCert, err := certsetup.CreateHubClientCert(clientID, ou,
-		nil, caKey, time.Now(), certsetup.TempCertDurationDays)
+		&keys.PublicKey, nil, caKey, time.Now(), certsetup.TempCertDurationDays)
 	assert.Error(t, err)
 	assert.Empty(t, clientCert)
 
 	clientCert, err = certsetup.CreateHubClientCert(clientID, ou,
-		caCert, nil, time.Now(), certsetup.TempCertDurationDays)
+		&keys.PublicKey, caCert, nil, time.Now(), certsetup.TempCertDurationDays)
 	assert.Error(t, err)
 	assert.Empty(t, clientCert)
 }
@@ -102,7 +104,10 @@ func TestCreateClientCert(t *testing.T) {
 	ou := certsetup.OUPlugin
 	// test creating hub certificate
 	caCert, caKeys := certsetup.CreateHubCA()
-	hubCert, err := certsetup.CreateHubClientCert(clientID, ou, caCert, caKeys, time.Now(), 1)
+	keys := certs.CreateECDSAKeys()
+
+	hubCert, err := certsetup.CreateHubClientCert(clientID, ou,
+		&keys.PublicKey, caCert, caKeys, time.Now(), 1)
 	require.NoErrorf(t, err, "TestServiceCert: Failed creating server certificate")
 	require.NotNil(t, hubCert)
 }
@@ -111,7 +116,10 @@ func TestCreateDeviceCert(t *testing.T) {
 	ou := certsetup.OUIoTDevice
 	// test creating hub certificate
 	caCert, caKeys := certsetup.CreateHubCA()
-	hubCert, err := certsetup.CreateHubClientCert(deviceID, ou, caCert, caKeys, time.Now(), 1)
+	keys := certs.CreateECDSAKeys()
+
+	hubCert, err := certsetup.CreateHubClientCert(deviceID, ou,
+		&keys.PublicKey, caCert, caKeys, time.Now(), 1)
 	require.NoErrorf(t, err, "TestServiceCert: Failed creating server certificate")
 	require.NotNil(t, hubCert)
 }

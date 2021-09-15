@@ -124,17 +124,19 @@ func CreateCertificateBundle(names []string, certFolder string) error {
 	// create the Plugin (client) certificate
 	pluginCertPath := path.Join(certFolder, config.DefaultPluginCertFile)
 	pluginKeyPath := path.Join(certFolder, config.DefaultPluginKeyFile)
-	pluginCert, _ := certs.LoadTLSCertFromPEM(pluginCertPath, pluginKeyPath)
-	if pluginCert == nil || forcePluginCert {
+	pluginTlsCert, _ := certs.LoadTLSCertFromPEM(pluginCertPath, pluginKeyPath)
+	if pluginTlsCert == nil || forcePluginCert {
 		logrus.Infof("CreateCertificateBundle Refreshing plugin server certificate in %s", certFolder)
 
 		// The plugin client cert uses the fixed common name 'plugin'
-		pluginCert, err = CreateHubClientCert(DefaultPluginClientID, OUPlugin,
-			caCert, caKeys, time.Now(), DefaultCertDurationDays)
+		privKey := certs.CreateECDSAKeys()
+		pluginCert, err := CreateHubClientCert(DefaultPluginClientID, OUPlugin,
+			&privKey.PublicKey, caCert, caKeys, time.Now(), DefaultCertDurationDays)
 		if err != nil {
 			logrus.Fatalf("CreateCertificateBundle client failed: %s", err)
 		}
-		certs.SaveTLSCertToPEM(pluginCert, pluginCertPath, pluginKeyPath)
+		certs.SaveX509CertToPEM(pluginCert, pluginCertPath)
+		certs.SaveKeysToPEM(privKey, pluginKeyPath)
 	}
 	return nil
 }
@@ -190,16 +192,18 @@ func CreateHubCA() (cert *x509.Certificate, key *ecdsa.PrivateKey) {
 // The client role is intended to for role based authorization. It is stored in the
 // certificate OrganizationalUnit. See OUxxx
 //
-// This generates a certificate using the client's public key in PEM format
+// This generates a TLS client certificate with keys
 //  clientID used as the CommonName, eg pluginID or deviceID
 //  ou of the client role, eg OUNone, OUClient, OUPlugin
+//  ownerPubKey the public key of the certificate holder
 //  caCert CA's certificate for signing
 //  caPrivKey CA's ECDSA key for signing
 //  start time the certificate is first valid. Intended for testing. Use time.now()
 //  durationDays nr of days the certificate will be valid
 // Returns the signed TLS certificate or error
-func CreateHubClientCert(clientID string, ou string, caCert *x509.Certificate, caPrivKey *ecdsa.PrivateKey,
-	start time.Time, durationDays int) (clientCert *tls.Certificate, err error) {
+func CreateHubClientCert(clientID string, ou string,
+	ownerPubKey *ecdsa.PublicKey, caCert *x509.Certificate, caPrivKey *ecdsa.PrivateKey,
+	start time.Time, durationDays int) (clientCert *x509.Certificate, err error) {
 
 	if caCert == nil || caPrivKey == nil {
 		err := fmt.Errorf("CreateHubClientCert: missing CA cert or key")
@@ -224,16 +228,20 @@ func CreateHubClientCert(clientID string, ou string, caCert *x509.Certificate, c
 		IsCA:                  false,
 		BasicConstraintsValid: true,
 	}
-	clientKey := certs.CreateECDSAKeys()
-	certDer, err := x509.CreateCertificate(rand.Reader, template, caCert,
-		&clientKey.PublicKey, caPrivKey)
+	// clientKey := certs.CreateECDSAKeys()
+	certDer, err := x509.CreateCertificate(rand.Reader, template, caCert, ownerPubKey, caPrivKey)
+	if err != nil {
+		logrus.Errorf("CertSetup.CreateHubClientCert: Unable to create WoST Hub client cert: %s", err)
+		return nil, err
+	}
+	newCert, err := x509.ParseCertificate(certDer)
 
-	// combined them into a TLS certificate
-	tlscert := &tls.Certificate{}
-	tlscert.Certificate = append(tlscert.Certificate, certDer)
-	tlscert.PrivateKey = clientKey
+	// // combined them into a TLS certificate
+	// tlscert := &tls.Certificate{}
+	// tlscert.Certificate = append(tlscert.Certificate, certDer)
+	// tlscert.PrivateKey = clientKey
 
-	return tlscert, err
+	return newCert, err
 }
 
 // CreateHubServerCert creates a new Hub service certificate and private key
